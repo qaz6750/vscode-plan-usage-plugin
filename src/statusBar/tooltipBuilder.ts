@@ -1,12 +1,32 @@
 import * as vscode from 'vscode';
 import { UsageResponse, TrendData, QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP, WEEKLY_QUOTA } from '../types';
 import { formatResetTime, formatDateTimeOnly, formatTokens, formatSparklineTime, getWeekdayName } from './formatters';
-import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from './usageEstimate';
+import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate, UsageEstimateResult } from './usageEstimate';
 
 export interface TrendSlice {
     xTime: string[];
     yValue: (number | null)[];
     modelCallCount: (number | null)[];
+}
+
+function localizedBrackets(text: string): string {
+    return text.replace(/\[([^\]]+)\]/g, '【$1】');
+}
+
+function formatEstimateLine(estimate: UsageEstimateResult): string {
+    const overWarning = estimate.projectedPercentage > 100 ? ' ⚠️' : '';
+    let line = `**${vscode.l10n.t('Usage Estimate')}:** ${estimate.projectedPercentage.toFixed(1)}%${overWarning}`;
+    if (estimate.timeToExhaust) {
+        if (estimate.projectedPercentage <= 100) {
+            line += ` | ${vscode.l10n.t('Time to exhaust')}: ${vscode.l10n.t('Sufficient')}`;
+        } else {
+            const exhaustDate = estimate.estimatedExhaustTime
+                ? formatDateTimeOnly(estimate.estimatedExhaustTime)
+                : '';
+            line += ` | ${vscode.l10n.t('Time to exhaust')}: ${estimate.timeToExhaust} (${exhaustDate})`;
+        }
+    }
+    return line;
 }
 
 export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
@@ -30,9 +50,8 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
         titleKey = 'GLM Coding Plan Usage';
     }
 
-    const title = vscode.l10n.t(titleKey);
-    const localizedTitle = title.replace(/\[([^\]]+)\]/g, '【$1】');
-    md.appendMarkdown(`### ${localizedTitle}\n\n`);
+    const title = localizedBrackets(vscode.l10n.t(titleKey));
+    md.appendMarkdown(`### ${title}\n\n`);
 
     const now = new Date();
     md.appendMarkdown(`**${vscode.l10n.t('Updated')}:** ${now.toLocaleString()}\n\n`);
@@ -40,54 +59,28 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
 
     if (fiveHourLimit) {
         const bar = buildMarkdownBar(fiveHourLimit.percentage, 20);
-        const fiveHourQuotaTitle = vscode.l10n.t('5 Hour Quota');
-        const localizedFiveHourQuota = fiveHourQuotaTitle.replace(/\[([^\]]+)\]/g, '【$1】');
-        md.appendMarkdown(`**【${localizedFiveHourQuota}】**\n\n`);
+        const fiveHourQuotaTitle = localizedBrackets(vscode.l10n.t('5 Hour Quota'));
+        md.appendMarkdown(`**【${fiveHourQuotaTitle}】**\n\n`);
         md.appendMarkdown(`${bar}\n\n`);
         md.appendMarkdown(`${vscode.l10n.t('Next reset')}: ${formatResetTime(fiveHourLimit.nextResetTime, QUOTA_TYPE_5H)}\n\n`);
 
         const estimate = calculate5HourEstimate(fiveHourLimit.percentage, fiveHourLimit.nextResetTime);
         if (estimate) {
-            const overWarning = estimate.projectedPercentage > 100 ? ' ⚠️' : '';
-            let estimateLine = `**${vscode.l10n.t('Usage Estimate')}:** ${estimate.projectedPercentage.toFixed(1)}%${overWarning}`;
-            if (estimate.timeToExhaust) {
-                if (estimate.projectedPercentage <= 100) {
-                    estimateLine += ` | ${vscode.l10n.t('Time to exhaust')}: ${vscode.l10n.t('Sufficient')}`;
-                } else {
-                    const exhaustDate = estimate.estimatedExhaustTime
-                        ? formatDateTimeOnly(estimate.estimatedExhaustTime)
-                        : '';
-                    estimateLine += ` | ${vscode.l10n.t('Time to exhaust')}: ${estimate.timeToExhaust} (${exhaustDate})`;
-                }
-            }
-            md.appendMarkdown(`${estimateLine}\n\n`);
+            md.appendMarkdown(`${formatEstimateLine(estimate)}\n\n`);
         }
     }
 
     if (weeklyLimit) {
         md.appendMarkdown(`---\n\n`);
         const bar = buildMarkdownBar(weeklyLimit.percentage, 20);
-        const weeklyQuotaTitle = vscode.l10n.t('Weekly Quota');
-        const localizedWeeklyQuota = weeklyQuotaTitle.replace(/\[([^\]]+)\]/g, '【$1】');
-        md.appendMarkdown(`**【${localizedWeeklyQuota}】**\n\n`);
+        const weeklyQuotaTitle = localizedBrackets(vscode.l10n.t('Weekly Quota'));
+        md.appendMarkdown(`**【${weeklyQuotaTitle}】**\n\n`);
         md.appendMarkdown(`${bar}\n\n`);
         md.appendMarkdown(`${vscode.l10n.t('Next reset')}: ${formatResetTime(weeklyLimit.nextResetTime, QUOTA_TYPE_WEEKLY)}\n\n`);
 
         const weeklyEstimate = calculateWeeklyEstimate(weeklyLimit.percentage, weeklyLimit.nextResetTime);
         if (weeklyEstimate) {
-            const overWarning = weeklyEstimate.projectedPercentage > 100 ? ' ⚠️' : '';
-            let weeklyEstimateLine = `**${vscode.l10n.t('Usage Estimate')}:** ${weeklyEstimate.projectedPercentage.toFixed(1)}%${overWarning}`;
-            if (weeklyEstimate.timeToExhaust) {
-                if (weeklyEstimate.projectedPercentage <= 100) {
-                    weeklyEstimateLine += ` | ${vscode.l10n.t('Time to exhaust')}: ${vscode.l10n.t('Sufficient')}`;
-                } else {
-                    const exhaustDate = weeklyEstimate.estimatedExhaustTime
-                        ? formatDateTimeOnly(weeklyEstimate.estimatedExhaustTime)
-                        : '';
-                    weeklyEstimateLine += ` | ${vscode.l10n.t('Time to exhaust')}: ${weeklyEstimate.timeToExhaust} (${exhaustDate})`;
-                }
-            }
-            md.appendMarkdown(`${weeklyEstimateLine}\n\n`);
+            md.appendMarkdown(`${formatEstimateLine(weeklyEstimate)}\n\n`);
         }
     }
 
@@ -98,9 +91,8 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     if (mcpLimit && (mcpLimit.currentUsage ?? 0) > 0) {
         md.appendMarkdown(`---\n\n`);
         const mcpBar = buildMarkdownBar(mcpLimit.percentage, 20);
-        const mcpQuotaTitle = vscode.l10n.t('MCP Monthly Usage');
-        const localizedMcpQuota = mcpQuotaTitle.replace(/\[([^\]]+)\]/g, '【$1】');
-        md.appendMarkdown(`**【${localizedMcpQuota}】**\n\n`);
+        const mcpQuotaTitle = localizedBrackets(vscode.l10n.t('MCP Monthly Usage'));
+        md.appendMarkdown(`**【${mcpQuotaTitle}】**\n\n`);
         md.appendMarkdown(`${mcpBar}\n\n`);
         md.appendMarkdown(`${vscode.l10n.t('Next reset')}: ${formatResetTime(mcpLimit.nextResetTime, QUOTA_TYPE_MCP)}\n\n`);
 
@@ -111,19 +103,7 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
 
         const mcpEstimate = calculateMonthlyEstimate(mcpLimit.percentage, mcpLimit.nextResetTime);
         if (mcpEstimate) {
-            const overWarning = mcpEstimate.projectedPercentage > 100 ? ' ⚠️' : '';
-            let mcpEstimateLine = `**${vscode.l10n.t('Usage Estimate')}:** ${mcpEstimate.projectedPercentage.toFixed(1)}%${overWarning}`;
-            if (mcpEstimate.timeToExhaust) {
-                if (mcpEstimate.projectedPercentage <= 100) {
-                    mcpEstimateLine += ` | ${vscode.l10n.t('Time to exhaust')}: ${vscode.l10n.t('Sufficient')}`;
-                } else {
-                    const exhaustDate = mcpEstimate.estimatedExhaustTime
-                        ? formatDateTimeOnly(mcpEstimate.estimatedExhaustTime)
-                        : '';
-                    mcpEstimateLine += ` | ${vscode.l10n.t('Time to exhaust')}: ${mcpEstimate.timeToExhaust} (${exhaustDate})`;
-                }
-            }
-            md.appendMarkdown(`${mcpEstimateLine}\n\n`);
+            md.appendMarkdown(`${formatEstimateLine(mcpEstimate)}\n\n`);
         }
     }
 
@@ -135,30 +115,24 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
         const todayData = filterTodayData(response.trend);
 
         md.appendMarkdown(`---\n\n`);
-        const todayUsageTitle = vscode.l10n.t('Today Usage');
-        const localizedTodayUsage = todayUsageTitle.replace(/\[([^\]]+)\]/g, '【$1】');
-        md.appendMarkdown(`**【${localizedTodayUsage}】**\n\n`);
+        const todayUsageTitle = localizedBrackets(vscode.l10n.t('Today Usage'));
+        md.appendMarkdown(`**【${todayUsageTitle}】**\n\n`);
 
         const peakToken = getPeakToken(todayData);
         const peakCalls = getPeakCalls(todayData);
 
-        const tokenLabel = vscode.l10n.t('Today Tokens');
-        const callLabel = vscode.l10n.t('Today Calls');
-        const maxLabelLen = Math.max(tokenLabel.length, callLabel.length);
         const tokenValue = formatTokens(todayData.totalTokens);
         const callValue = String(todayData.totalCalls);
-        const maxValueLen = Math.max(tokenValue.length, callValue.length);
-        const pad = '\u00a0';
 
-        let tokenLine = `${tokenLabel.padEnd(maxLabelLen, pad)}: ${tokenValue.padEnd(maxValueLen, pad)}`;
+        let tokenLine = `**${vscode.l10n.t('Tokens')}:** ${tokenValue}`;
         if (peakToken) {
-            tokenLine += ` | ${vscode.l10n.t('Peak Token')}: ${formatTokens(peakToken.tokens)} (${peakToken.time})`;
+            tokenLine += ` | ${vscode.l10n.t('Peak')} ${formatTokens(peakToken.tokens)}@${peakToken.time}`;
         }
         md.appendMarkdown(`${tokenLine}\n\n`);
 
-        let callLine = `${callLabel.padEnd(maxLabelLen, pad)}: ${callValue.padEnd(maxValueLen, pad)}`;
+        let callLine = `**${vscode.l10n.t('Calls')}:** ${callValue}`;
         if (peakCalls) {
-            callLine += ` | ${vscode.l10n.t('Peak Calls')}: ${peakCalls.calls} (${peakCalls.time})`;
+            callLine += ` | ${vscode.l10n.t('Peak')} ${peakCalls.calls}@${peakCalls.time}`;
         }
         md.appendMarkdown(`${callLine}\n\n`);
 
@@ -167,8 +141,7 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
             const startTime = formatSparklineTime(todayData.xTime[sparklineResult.startIndex]);
             const lastIdx = todayData.xTime.length - 1;
             const endTime = formatSparklineTime(todayData.xTime[lastIdx], true);
-            const todayTrendTitle = vscode.l10n.t('Today Trend');
-            md.appendMarkdown(`**${todayTrendTitle}(${startTime}~${endTime}):**\n\n`);
+            md.appendMarkdown(`**${startTime}~${endTime}:**\n\n`);
             md.appendMarkdown('```\n');
             md.appendMarkdown(sparklineResult.bars);
             md.appendMarkdown('\n```\n');
@@ -185,9 +158,8 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
             const total7DayLabel = total7DayPct
                 ? `${formatTokens(total7DayTokens)} (${total7DayPct}%)`
                 : formatTokens(total7DayTokens);
-            const sevenDayUsageTitle = vscode.l10n.t('7-Day Usage');
-            const localizedSevenDayUsage = sevenDayUsageTitle.replace(/\[([^\]]+)\]/g, '【$1】');
-            md.appendMarkdown(`**【${localizedSevenDayUsage}】** ${total7DayLabel}\n\n`);
+            const sevenDayUsageTitle = localizedBrackets(vscode.l10n.t('7-Day Usage'));
+            md.appendMarkdown(`**【${sevenDayUsageTitle}】** ${total7DayLabel}\n\n`);
 
             const formatDay = (day: { date: string; tokens: number }) => {
                 if (day.tokens === 0) {
