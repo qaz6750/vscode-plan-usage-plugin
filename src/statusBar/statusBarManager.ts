@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
-import { UsageResponse, QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, UserActivityState } from '../types';
+import { UsageResponse } from '../types';
+import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from '../constants';
+import { UserActivityState } from '../enums';
 import { formatRemainingTimeCompact, getCombinedColor } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate } from './usageEstimate';
 import { buildTooltip } from './tooltipBuilder';

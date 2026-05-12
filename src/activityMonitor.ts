@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { UserActivityState } from './types';
+import { UserActivityState } from './enums';
 
 /** 状态变化回调函数类型 */
 type StateChangeCallback = (newState: UserActivityState) => void;

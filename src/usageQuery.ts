@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
 import * as https from 'https';
 import { URL } from 'url';
-import { Platform, UsageResponse, ModelUsageData, ToolUsageData, QuotaLimitData, TrendData, ActiveDaysInfo, QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from './types';
+import { Platform, UsageResponse, ModelUsageData, ToolUsageData, QuotaLimitData, TrendData, ActiveDaysInfo } from './types';
+import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from './constants';
 import { ConfigManager } from './config';
 
 export class UsageQueryService {

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { UsageResponse, TrendData, QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP, WEEKLY_QUOTA } from '../types';
+import { UsageResponse, TrendData } from '../types';
+import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { formatResetTime, formatDateTimeOnly, formatTokens, formatSparklineTime, getWeekdayName } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate, UsageEstimateResult } from './usageEstimate';
 
@@ -153,20 +154,12 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
         if (dailyData.length > 0) {
             md.appendMarkdown(`---\n\n`);
             const total7DayTokens = dailyData.reduce((sum, d) => sum + d.tokens, 0);
-            const weeklyQuota = response.level ? WEEKLY_QUOTA[response.level.toLowerCase()] : undefined;
-            const total7DayPct = weeklyQuota ? (total7DayTokens / weeklyQuota * 100).toFixed(1) : undefined;
-            const total7DayLabel = total7DayPct
-                ? `${formatTokens(total7DayTokens)} (${total7DayPct}%)`
-                : formatTokens(total7DayTokens);
             const sevenDayUsageTitle = localizedBrackets(vscode.l10n.t('7-Day Usage'));
-            md.appendMarkdown(`**【${sevenDayUsageTitle}】** ${total7DayLabel}\n\n`);
+            md.appendMarkdown(`**【${sevenDayUsageTitle}】** ${formatTokens(total7DayTokens)}\n\n`);
 
             const formatDay = (day: { date: string; tokens: number }) => {
                 if (day.tokens === 0) {
                     return `${day.date}: ${vscode.l10n.t('None')}`;
-                } else if (weeklyQuota) {
-                    const pct = (day.tokens / weeklyQuota * 100).toFixed(1);
-                    return `${day.date}: ${formatTokens(day.tokens)} (${pct}%)`;
                 } else {
                     return `${day.date}: ${formatTokens(day.tokens)}`;
                 }

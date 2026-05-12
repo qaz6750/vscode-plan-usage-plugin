@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { UsageResponse, UserActivityState } from './types';
+import { UsageResponse } from './types';
+import { UserActivityState } from './enums';
 import { ConfigManager } from './config';
 import { ActivityMonitor } from './activityMonitor';
 import { StatusBarManager } from './statusBar';

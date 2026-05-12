@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../types';
+import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 
 interface ColorParams {
     fiveHourPct?: number;

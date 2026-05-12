@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { UsageResponse, QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from './types';
+import { UsageResponse } from './types';
+import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from './constants';
 
 const WARNED_RESET_TIMES_KEY = 'glmPlanUsage.warnedResetTimes';
 
