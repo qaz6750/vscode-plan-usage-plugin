@@ -4,6 +4,7 @@ import { URL } from 'url';
 import { Platform, UsageResponse, ModelUsageData, ToolUsageData, QuotaLimitData, TrendData, ActiveDaysInfo } from './types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from './constants';
 import { ConfigManager } from './config';
+import { mockUsageResponse } from './mock-data';
 
 export class UsageQueryService {
     private static formatDateTime(date: Date): string {
@@ -248,6 +249,11 @@ export class UsageQueryService {
     }
 
     static async queryUsage(): Promise<UsageResponse> {
+        // 使用 mock 数据（截图/测试用）
+        if (ConfigManager.isMockDataEnabled()) {
+            return mockUsageResponse;
+        }
+
         const authToken = await ConfigManager.getAuthToken();
         const baseUrl = ConfigManager.getBaseUrl();
 

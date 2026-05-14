@@ -85,6 +85,11 @@ export class ConfigManager {
         this.afkThreshold = this.loadAFKThreshold();
     }
 
+    /** 是否使用 mock 数据（用于截图/测试） */
+    static isMockDataEnabled(): boolean {
+        return process.env.GLM_USE_MOCK === 'true';
+    }
+
     static async validateConfig(): Promise<{ valid: boolean; error?: string }> {
         const authToken = await this.getAuthToken();
         const baseUrl = this.getBaseUrl();

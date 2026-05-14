@@ -184,12 +184,14 @@ export function transformResponse(response: UsageResponse): SidebarData {
             today.peakCalls = `${vscode.l10n.t('Peak')} ${peakC.calls}@${peakC.time}`;
         }
 
-        const dailyData = aggregateDailyData(response.trend);
+        // 使用 monthTrend 获取7天数据（trend是小时级数据，只有今天）
+        const weekSource = response.monthTrend || response.trend;
+        const dailyData = aggregateDailyData(weekSource);
         if (dailyData.length > 0) {
             const last7 = dailyData.slice(-7);
             const last7Total = last7.reduce((sum, d) => sum + d.tokens, 0);
             
-            const modelDailyData = aggregateDailyDataByModel(response.trend);
+            const modelDailyData = aggregateDailyDataByModel(weekSource);
             const last7Models = modelDailyData.map(md => ({
                 model: md.model,
                 dates: md.dates.slice(-7),
