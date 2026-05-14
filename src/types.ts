@@ -46,10 +46,18 @@ export interface UsageResponse {
     level?: string;
 }
 
+export interface ModelTrendData {
+    model: string;
+    xTime: string[];
+    yValue: (number | null)[];
+    callCount: (number | null)[];
+}
+
 export interface TrendData {
     xTime: string[];
     yValue: (number | null)[];
     modelCallCount: (number | null)[];
+    modelDataList?: ModelTrendData[];
     totalUsage: {
         totalModelCallCount: number;
         totalTokensUsage: number;

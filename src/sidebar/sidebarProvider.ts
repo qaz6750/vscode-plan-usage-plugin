@@ -43,6 +43,12 @@ localResourceRoots: [
             webviewView.webview.onDidReceiveMessage(async (msg) => {
                 if (msg.command === 'refresh' && this._refreshCallback) {
                     await this._refreshCallback();
+                } else if (msg.command === 'saveRange') {
+                    this._context.globalState.update('glmPlanUsage.dayRange', msg.value);
+                } else if (msg.command === 'openSettings') {
+                    vscode.commands.executeCommand('workbench.action.openSettings', 'glmPlanUsage');
+                } else if (msg.command === 'setToken') {
+                    vscode.commands.executeCommand('glmPlanUsage.setToken');
                 }
             })
         );
@@ -69,7 +75,8 @@ localResourceRoots: [
 
     private postUpdate(response: UsageResponse): void {
         const data: SidebarData = transformResponse(response);
-        this._view?.webview.postMessage({ command: 'updateData', data });
+        const dayRange = this._context.globalState.get<string>('glmPlanUsage.dayRange', '7');
+        this._view?.webview.postMessage({ command: 'updateData', data, dayRange });
     }
 
     private disposeView(): void {

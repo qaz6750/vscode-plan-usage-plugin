@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import { UsageResponse } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
-import { formatTokens, formatResetTime } from '../statusBar/formatters';
+import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
-import { filterTodayData, aggregateDailyData, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
+import { filterTodayData, aggregateDailyData, aggregateDailyDataByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
 
 function colorForPercentage(pct: number): string {
     if (pct >= 90) { return '#F44747'; }
@@ -21,7 +21,10 @@ function formatEstimate(percentage: number, nextResetTime: number | undefined, c
         if (result.projectedPercentage <= 100) {
             timeText = `${vscode.l10n.t('Time to exhaust')}: ${vscode.l10n.t('Sufficient')}`;
         } else {
-            timeText = `${vscode.l10n.t('Time to exhaust')}: ${result.timeToExhaust}`;
+            const exhaustDate = result.estimatedExhaustTime
+                ? ` (${formatDateTimeOnly(result.estimatedExhaustTime)})`
+                : '';
+            timeText = `${vscode.l10n.t('Time to exhaust')}: ${result.timeToExhaust}${exhaustDate}`;
         }
     }
     return { estimate: estimateText, timeToExhaust: timeText };
@@ -51,10 +54,18 @@ export interface TodayData {
     peakTokenIndex?: number;
 }
 
+export interface ModelDailyData {
+    model: string;
+    dates: string[];
+    tokens: number[];
+    total: string;
+}
+
 export interface DailyData {
     dates: string[];
     tokens: number[];
     total: string;
+    models?: ModelDailyData[];
 }
 
 export interface SidebarLocales {
@@ -73,6 +84,8 @@ export interface SidebarLocales {
     remaining: string;
     last7Days: string;
     last30Days: string;
+    settings: string;
+    configureApiKey: string;
 }
 
 export interface SidebarData {
@@ -159,10 +172,20 @@ export function transformResponse(response: UsageResponse): SidebarData {
         if (dailyData.length > 0) {
             const last7 = dailyData.slice(-7);
             const last7Total = last7.reduce((sum, d) => sum + d.tokens, 0);
+            
+            const modelDailyData = aggregateDailyDataByModel(response.trend);
+            const last7Models = modelDailyData.map(md => ({
+                model: md.model,
+                dates: md.dates.slice(-7),
+                tokens: md.tokens.slice(-7),
+                total: formatTokens(md.tokens.slice(-7).reduce((sum, t) => sum + t, 0))
+            })).filter(md => md.tokens.some(t => t > 0));
+            
             week = {
                 dates: last7.map(d => d.date),
                 tokens: last7.map(d => d.tokens),
-                total: formatTokens(last7Total)
+                total: formatTokens(last7Total),
+                models: last7Models.length > 0 ? last7Models : undefined
             };
         }
 
@@ -170,10 +193,20 @@ export function transformResponse(response: UsageResponse): SidebarData {
             const monthData = aggregateDailyData(response.monthTrend);
             if (monthData.length > 0) {
                 const allTotal = monthData.reduce((sum, d) => sum + d.tokens, 0);
+                
+                const monthModelData = aggregateDailyDataByModel(response.monthTrend);
+                const monthModels = monthModelData.map(md => ({
+                    model: md.model,
+                    dates: md.dates,
+                    tokens: md.tokens,
+                    total: formatTokens(md.tokens.reduce((sum, t) => sum + t, 0))
+                })).filter(md => md.tokens.some(t => t > 0));
+                
                 month = {
                     dates: monthData.map(d => d.date),
                     tokens: monthData.map(d => d.tokens),
-                    total: formatTokens(allTotal)
+                    total: formatTokens(allTotal),
+                    models: monthModels.length > 0 ? monthModels : undefined
                 };
             }
         } else if (dailyData.length > 0) {
@@ -205,6 +238,8 @@ export function transformResponse(response: UsageResponse): SidebarData {
             remaining: vscode.l10n.t('Remaining'),
             last7Days: vscode.l10n.t('Last 7 Days'),
             last30Days: vscode.l10n.t('Last 30 Days'),
+            settings: vscode.l10n.t('Settings'),
+            configureApiKey: vscode.l10n.t('Configure API Key'),
         },
         quotas,
         today,

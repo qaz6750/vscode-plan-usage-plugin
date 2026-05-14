@@ -114,6 +114,8 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     }
 
     md.appendMarkdown(`\n---\n\n`);
+    md.appendMarkdown(`[$(sidebar) ${vscode.l10n.t('Open sidebar for more details')}](command:workbench.view.extension.glmPlanUsage "${vscode.l10n.t('Open sidebar for more details')}")`);
+    md.appendMarkdown('\n\n---\n\n');
     md.appendMarkdown(`[$(gear) ${vscode.l10n.t('Settings')}](command:workbench.action.openSettings?%22glmPlanUsage%22 "${vscode.l10n.t('Settings')}")`);
     md.appendMarkdown('\u00a0|\u00a0');
     md.appendMarkdown(`[$(key) ${vscode.l10n.t('Configure API Key')}](command:glmPlanUsage.setToken "${vscode.l10n.t('Configure API Key')}")`);
@@ -184,6 +186,42 @@ export function aggregateDailyData(trend: TrendData): { date: string; tokens: nu
         });
 
     return sorted;
+}
+
+export function aggregateDailyDataByModel(trend: TrendData): { model: string; dates: string[]; tokens: number[] }[] {
+    if (!trend.modelDataList || trend.modelDataList.length === 0) {
+        return [];
+    }
+
+    return trend.modelDataList.map(modelTrend => {
+        const dayMap = new Map<string, number>();
+
+        for (let i = 0; i < modelTrend.xTime.length; i++) {
+            const timeStr = modelTrend.xTime[i];
+            const dateKey = timeStr.split(' ')[0];
+            const val = modelTrend.yValue[i];
+            if (val !== null && val !== undefined) {
+                dayMap.set(dateKey, (dayMap.get(dateKey) || 0) + val);
+            }
+        }
+
+        const sorted = Array.from(dayMap.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, tokens]) => {
+                const parts = date.split('-');
+                const mm = parts[1];
+                const dd = parts[2];
+                const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                const weekday = getWeekdayName(d);
+                return { date: `${mm}-${dd}\n${weekday}`, tokens };
+            });
+
+        return {
+            model: modelTrend.model,
+            dates: sorted.map(d => d.date),
+            tokens: sorted.map(d => d.tokens)
+        };
+    });
 }
 
 export function getPeakToken(trend: TrendSlice): { tokens: number; time: string; index: number } | null {

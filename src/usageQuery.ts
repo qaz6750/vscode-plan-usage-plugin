@@ -190,10 +190,19 @@ export class UsageQueryService {
         if (!data || !data.x_time || !data.tokensUsage) {
             return undefined;
         }
+        
+        const modelDataList = (data.modelDataList || []).map((item: any) => ({
+            model: item.modelName || '',
+            xTime: data.x_time,
+            yValue: item.tokensUsage || [],
+            callCount: []
+        }));
+        
         return {
             xTime: data.x_time,
             yValue: data.tokensUsage,
             modelCallCount: data.modelCallCount || [],
+            modelDataList: modelDataList.length > 0 ? modelDataList : undefined,
             totalUsage: data.totalUsage || { totalModelCallCount: 0, totalTokensUsage: 0 }
         };
     }
