@@ -6,4 +6,4 @@ src
 *.map
 .gitignore
 tsconfig.json
-!out/echarts/echarts.min.js
+!libs/echarts.min.js

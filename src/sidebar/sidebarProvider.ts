@@ -28,9 +28,9 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
 
         webviewView.webview.options = {
             enableScripts: true,
-            localResourceRoots: [
-                vscode.Uri.joinPath(this._context.extensionUri, 'out', 'echarts')
-            ]
+localResourceRoots: [
+    vscode.Uri.joinPath(this._context.extensionUri, 'libs')
+]
         };
 
         const echartsUri = webviewView.webview.asWebviewUri(
