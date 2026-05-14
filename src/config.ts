@@ -92,7 +92,7 @@ export class ConfigManager {
         if (!authToken) {
             return {
                 valid: false,
-                error: vscode.l10n.t('API Key is not configured. Please use "GLM Plan Usage: Set API Key" command.')
+                error: vscode.l10n.t('API Key is not configured. Please use "GLM Coding Plan Usage: Set API Key" command.')
             };
         }
 

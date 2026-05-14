@@ -3,7 +3,7 @@ import { UsageResponse } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
-import { filterTodayData, aggregateDailyData, aggregateDailyDataByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
+import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
 
 function colorForPercentage(pct: number): string {
     if (pct >= 90) { return '#F44747'; }
@@ -43,6 +43,12 @@ export interface QuotaItem {
     timeToExhaust: string;
 }
 
+export interface ModelTodayData {
+    model: string;
+    xTime: string[];
+    yValue: (number | null)[];
+}
+
 export interface TodayData {
     totalTokens: string;
     totalCalls: string;
@@ -52,6 +58,7 @@ export interface TodayData {
     yValue: (number | null)[];
     peakTokenValue?: number;
     peakTokenIndex?: number;
+    models?: ModelTodayData[];
 }
 
 export interface ModelDailyData {
@@ -69,6 +76,7 @@ export interface DailyData {
 }
 
 export interface SidebarLocales {
+    title: string;
     todayUsage: string;
     dailyUsage: string;
     tokens: string;
@@ -148,13 +156,21 @@ export function transformResponse(response: UsageResponse): SidebarData {
 
     if (response.trend) {
         const todayData = filterTodayData(response.trend);
+        const todayModelData = filterTodayDataByModel(response.trend);
+        const todayModels = todayModelData.map(md => ({
+            model: md.model,
+            xTime: md.xTime,
+            yValue: md.yValue
+        }));
+
         today = {
             totalTokens: formatTokens(todayData.totalTokens),
             totalCalls: String(todayData.totalCalls),
             peakToken: '',
             peakCalls: '',
             xTime: todayData.xTime,
-            yValue: todayData.yValue
+            yValue: todayData.yValue,
+            models: todayModels.length > 0 ? todayModels : undefined
         };
 
         const peakT = getPeakToken(todayData);
@@ -219,16 +235,22 @@ export function transformResponse(response: UsageResponse): SidebarData {
         }
     }
 
+    const level = (response.level || '').toUpperCase();
+    const title = level
+        ? vscode.l10n.t(`[{0}] GLM Coding Plan Usage`, level)
+        : vscode.l10n.t('GLM Coding Plan Usage');
+
     return {
-        level: (response.level || '').toUpperCase(),
+        level,
         updated: now.toLocaleString(),
         locales: {
+            title,
             todayUsage: vscode.l10n.t('Today Usage'),
             dailyUsage: vscode.l10n.t('Daily Usage'),
             tokens: vscode.l10n.t('Tokens'),
             calls: vscode.l10n.t('Calls'),
             noData: vscode.l10n.t('No data available'),
-            noQuotaData: vscode.l10n.t('No data available'),
+            noQuotaData: vscode.l10n.t('No data available. Please check your API Key.'),
             updated: vscode.l10n.t('Updated'),
             total: vscode.l10n.t('Total'),
             refresh: vscode.l10n.t('Refresh'),

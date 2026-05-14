@@ -110,7 +110,7 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     }
 
     if (!fiveHourLimit && !weeklyLimit && !mcpLimit) {
-        md.appendMarkdown(`**${vscode.l10n.t('Quota Usage')}:** N/A\n\n`);
+        md.appendMarkdown(`**${vscode.l10n.t('No data available. Please check your API Key.')}**\n\n`);
     }
 
     md.appendMarkdown(`\n---\n\n`);
@@ -160,6 +160,34 @@ export function filterTodayData(trend: TrendData): {
     }
 
     return { totalTokens, totalCalls, xTime: todayXTime, yValue: todayYValue, modelCallCount: todayModelCallCount };
+}
+
+export function filterTodayDataByModel(trend: TrendData): { model: string; xTime: string[]; yValue: (number | null)[] }[] {
+    if (!trend.modelDataList || trend.modelDataList.length === 0) {
+        return [];
+    }
+
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    return trend.modelDataList.map(modelTrend => {
+        const todayXTime: string[] = [];
+        const todayYValue: (number | null)[] = [];
+
+        for (let i = 0; i < modelTrend.xTime.length; i++) {
+            const timeStr = modelTrend.xTime[i];
+            if (timeStr.startsWith(todayStr)) {
+                todayXTime.push(timeStr);
+                todayYValue.push(modelTrend.yValue[i]);
+            }
+        }
+
+        return {
+            model: modelTrend.model,
+            xTime: todayXTime,
+            yValue: todayYValue
+        };
+    }).filter(m => m.xTime.length > 0 && m.yValue.some(v => v !== null && v !== undefined && v > 0));
 }
 
 export function aggregateDailyData(trend: TrendData): { date: string; tokens: number }[] {

@@ -113,6 +113,7 @@ body {
   color: var(--vscode-descriptionForeground);
   font-style: italic;
   padding: 8px 0;
+  text-align: center;
 }
 .refresh-btn {
   background: none;
@@ -182,10 +183,22 @@ body {
 .action-btn:hover {
   text-decoration: underline;
 }
-.action-btn svg {
-  width: 14px;
-  height: 14px;
-  fill: currentColor;
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  text-align: center;
+}
+.error-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+.error-message {
+  font-size: 12px;
+  color: var(--vscode-errorForeground);
+  margin-bottom: 12px;
 }
 </style>
 </head>
@@ -195,6 +208,13 @@ body {
   <button class="refresh-btn" id="refresh-btn" onclick="doRefresh()">&#x21bb;</button>
 </div>
 <div class="updated" id="header-updated" style="margin-bottom:10px;font-size:10px;color:var(--vscode-descriptionForeground)"></div>
+
+<div id="error-section" style="display:none">
+  <div class="error-container">
+    <div class="error-icon">⚠️</div>
+    <div class="error-message" id="error-message"></div>
+  </div>
+</div>
 
 <div class="section" id="quota-section"></div>
 
@@ -220,11 +240,11 @@ body {
 
 <div class="action-bar">
   <button class="action-btn" id="settings-btn">
-    <svg viewBox="0 0 16 16"><path d="M9.405 1.05c-.413-1.4-2.397-1.4-2.81 0l-.1.34a1.464 1.464 0 01-2.105.872l-.31-.17c-1.283-.698-2.686.705-1.987 1.987l.169.311c.446.82.023 1.841-.872 2.105l-.34.1c-1.4.413-1.4 2.397 0 2.81l.34.1a1.464 1.464 0 01.872 2.105l-.17.31c-.698 1.283.705 2.686 1.987 1.987l.311-.169a1.464 1.464 0 012.105.872l.1.34c.413 1.4 2.397 1.4 2.81 0l.1-.34a1.464 1.464 0 012.105-.872l.31.17c1.283.698 2.686-.705 1.987-1.987l-.169-.311a1.464 1.464 0 01.872-2.105l.34-.1c1.4-.413 1.4-2.397 0-2.81l-.34-.1a1.464 1.464 0 01-.872-2.105l.17-.31c.698-1.283-.705-2.686-1.987-1.987l-.311.169a1.464 1.464 0 01-2.105-.872l-.1-.34zM8 10.93a2.929 2.929 0 110-5.86 2.929 2.929 0 010 5.858z"/></svg>
+    <span>⚙️</span>
     <span id="settings-label">Settings</span>
   </button>
   <button class="action-btn" id="apikey-btn">
-    <svg viewBox="0 0 16 16"><path d="M12.5 0a3.5 3.5 0 00-2.45 5.96L8 8l-1.5 1.5-1-1-1 1 2 2 1-1L9.5 11l2.05-2.04A3.5 3.5 0 0012.5 0zm0 5a1.5 1.5 0 110-3 1.5 1.5 0 010 3z"/></svg>
+    <span>🔑</span>
     <span id="apikey-label">Configure API Key</span>
   </button>
 </div>
@@ -261,6 +281,7 @@ body {
       if (todayChart) todayChart.dispose();
       todayChart = echarts.init(dom);
       const c = chartColors();
+      const colors = modelColors();
 
       const xData = data.xTime.map(function(t) {
         const parts = t.split(' ');
@@ -268,7 +289,50 @@ body {
       });
       const yData = data.yValue.map(function(v) { return v === null ? '-' : v; });
 
-      var seriesConfig = {
+      var series = [];
+      var legend = { show: false };
+
+      if (data.models && data.models.length > 0) {
+        legend = {
+          show: true,
+          top: 0,
+          type: 'scroll',
+          textStyle: { fontSize: 10, color: c.text },
+          itemWidth: 12,
+          itemHeight: 8,
+          pageIconSize: 10,
+          pageTextStyle: { color: c.text }
+        };
+
+        series.push({
+          name: loc.total || 'Total',
+          type: 'line',
+          data: yData,
+          smooth: true,
+          symbol: 'none',
+          lineStyle: { width: 2, color: '#5985f5', type: 'solid' },
+          itemStyle: { color: '#5985f5' },
+          areaStyle: { color: 'rgba(89,133,245,0.15)' },
+          connectNulls: false
+        });
+
+        for (var i = 0; i < data.models.length; i++) {
+          var m = data.models[i];
+          var modelYData = m.yValue.map(function(v) { return v === null ? '-' : v; });
+          series.push({
+            name: m.model,
+            type: 'line',
+            data: modelYData,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 1.5, color: colors[i % colors.length] },
+            itemStyle: { color: colors[i % colors.length] },
+            connectNulls: false
+          });
+        }
+      } else {
+        series.push({
+          name: loc.tooltipTokens || 'Tokens',
           type: 'line',
           data: yData,
           smooth: true,
@@ -276,9 +340,12 @@ body {
           lineStyle: { width: 1.5, color: c.accent },
           areaStyle: { color: c.area },
           connectNulls: false
-      };
+        });
+      }
+
       todayChart.setOption({
-        grid: { top: 12, right: 8, bottom: 20, left: 42 },
+        grid: { top: data.models && data.models.length > 0 ? 24 : 12, right: 8, bottom: 20, left: 42 },
+        legend: legend,
         xAxis: {
           type: 'category',
           data: xData,
@@ -291,14 +358,20 @@ body {
           axisLabel: { fontSize: 9, color: c.text, formatter: function(v) { return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } },
           splitLine: { lineStyle: { color: c.grid } }
         },
-        series: [seriesConfig],
+        series: series,
         tooltip: {
           trigger: 'axis',
           textStyle: { fontSize: 10 },
           formatter: function(params) {
-            var p = params[0];
-            if (!p || p.value === '-') return '';
-            return p.axisValue + '<br/>' + (loc.tooltipTokens || 'Tokens') + ': ' + (p.value >= 1000000 ? (p.value/1000000).toFixed(1)+'M' : p.value >= 1000 ? (p.value/1000).toFixed(1)+'K' : p.value);
+            if (!params || params.length === 0) return '';
+            var result = params[0].axisValue;
+            for (var i = 0; i < params.length; i++) {
+              var p = params[i];
+              if (p.value === 0 || p.value === null || p.value === '-') continue;
+              var val = p.value >= 1000000 ? (p.value/1000000).toFixed(1)+'M' : p.value >= 1000 ? (p.value/1000).toFixed(1)+'K' : p.value;
+              result += '<br/>' + p.marker + p.seriesName + ': ' + val;
+            }
+            return result;
           }
         }
       });
@@ -452,9 +525,7 @@ body {
 
     document.getElementById('no-data').style.display = 'none';
 
-    if (data.level) {
-      document.getElementById('header-title').textContent = '[' + data.level + '] GLM Coding Plan Usage';
-    }
+    document.getElementById('header-title').textContent = loc.title || 'GLM Coding Plan Usage';
     document.getElementById('header-updated').textContent = (loc.updated || 'Updated') + ': ' + (data.updated || '');
     document.getElementById('refresh-btn').title = loc.refresh || 'Refresh';
     document.getElementById('settings-label').textContent = loc.settings || 'Settings';
@@ -525,10 +596,21 @@ body {
   window.addEventListener('message', function(event) {
     var msg = event.data;
     if (msg && msg.command === 'updateData') {
+      document.getElementById('error-section').style.display = 'none';
+      document.getElementById('quota-section').style.display = '';
+      document.getElementById('today-section').style.display = '';
+      document.getElementById('week-section').style.display = '';
       if (msg.dayRange) {
         currentRange = msg.dayRange;
       }
       updateUI(msg.data);
+    } else if (msg && msg.command === 'showError') {
+      document.getElementById('error-section').style.display = '';
+      document.getElementById('quota-section').style.display = 'none';
+      document.getElementById('today-section').style.display = 'none';
+      document.getElementById('week-section').style.display = 'none';
+      document.getElementById('no-data').style.display = 'none';
+      document.getElementById('error-message').textContent = msg.error;
     }
   });
 
@@ -540,6 +622,8 @@ body {
   var wc = document.getElementById('week-chart');
   if (tc) observer.observe(tc);
   if (wc) observer.observe(wc);
+
+  vscodeApi.postMessage({ command: 'ready' });
 })();
 </script>
 </body>

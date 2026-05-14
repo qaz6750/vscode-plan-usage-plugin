@@ -144,8 +144,21 @@ export class UsageQueryService {
                 });
 
                 res.on('end', () => {
-                    if (res.statusCode !== 200) {
-                        reject(new Error(`HTTP ${res.statusCode}: ${data}`));
+                    const statusCode = res.statusCode ?? 0;
+                    if (statusCode !== 200) {
+                        let errorMsg: string;
+                        if (statusCode === 401) {
+                            errorMsg = vscode.l10n.t('Authentication failed (HTTP 401). Please check your API Key.');
+                        } else if (statusCode === 403) {
+                            errorMsg = vscode.l10n.t('Access denied (HTTP 403). Please check your API Key permissions.');
+                        } else if (statusCode === 429) {
+                            errorMsg = vscode.l10n.t('Rate limit exceeded (HTTP 429). Please try again later.');
+                        } else if (statusCode >= 500) {
+                            errorMsg = vscode.l10n.t('Server error (HTTP {0}). Please try again later.', statusCode);
+                        } else {
+                            errorMsg = vscode.l10n.t('Request failed (HTTP {0}).', statusCode);
+                        }
+                        reject(new Error(errorMsg));
                         return;
                     }
 
@@ -157,7 +170,7 @@ export class UsageQueryService {
                         }
                         resolve(outputData);
                     } catch (e) {
-                        reject(new Error(`Failed to parse response: ${data}`));
+                        reject(new Error(vscode.l10n.t('Failed to parse response from server.')));
                     }
                 });
             });

@@ -33,8 +33,10 @@ async function migrateAuthToken(context: vscode.ExtensionContext): Promise<void>
 async function queryUsage(forceRefresh = false): Promise<void> {
     const validation = await ConfigManager.validateConfig();
     if (!validation.valid) {
-        vscode.window.showErrorMessage(validation.error || vscode.l10n.t('Configuration is invalid'));
+        const errorMsg = validation.error || vscode.l10n.t('Configuration is invalid');
+        vscode.window.showErrorMessage(errorMsg);
         statusBarManager.setError(vscode.l10n.t('Config invalid'));
+        sidebarProvider.setError(errorMsg);
         return;
     }
 
@@ -61,6 +63,7 @@ async function queryUsage(forceRefresh = false): Promise<void> {
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : vscode.l10n.t('Unknown error');
         statusBarManager.setError(errorMessage);
+        sidebarProvider.setError(errorMessage);
     }
 }
 

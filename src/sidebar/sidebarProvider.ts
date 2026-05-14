@@ -6,6 +6,7 @@ import { getHtmlTemplate } from './htmlTemplate';
 export class SidebarProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private _pendingData?: UsageResponse;
+    private _pendingError?: string;
     private _refreshCallback?: () => Promise<void>;
     private _disposables: vscode.Disposable[] = [];
 
@@ -41,7 +42,9 @@ localResourceRoots: [
 
         this._disposables.push(
             webviewView.webview.onDidReceiveMessage(async (msg) => {
-                if (msg.command === 'refresh' && this._refreshCallback) {
+                if (msg.command === 'ready') {
+                    this.flushPending();
+                } else if (msg.command === 'refresh' && this._refreshCallback) {
                     await this._refreshCallback();
                 } else if (msg.command === 'saveRange') {
                     this._context.globalState.update('glmPlanUsage.dayRange', msg.value);
@@ -55,21 +58,37 @@ localResourceRoots: [
 
         this._disposables.push(
             webviewView.onDidChangeVisibility(() => {
-                if (webviewView.visible && this._pendingData) {
-                    this.postUpdate(this._pendingData);
+                if (webviewView.visible) {
+                    this.flushPending();
                 }
             })
         );
+    }
 
-        if (this._pendingData) {
+    private flushPending(): void {
+        if (!this._view || !this._view.visible) {
+            return;
+        }
+        if (this._pendingError) {
+            this._view.webview.postMessage({ command: 'showError', error: this._pendingError });
+        } else if (this._pendingData) {
             this.postUpdate(this._pendingData);
         }
     }
 
     update(response: UsageResponse): void {
         this._pendingData = response;
+        this._pendingError = undefined;
         if (this._view && this._view.visible) {
             this.postUpdate(response);
+        }
+    }
+
+    setError(error: string): void {
+        this._pendingError = error;
+        this._pendingData = undefined;
+        if (this._view && this._view.visible) {
+            this._view.webview.postMessage({ command: 'showError', error });
         }
     }
 
