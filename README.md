@@ -1,4 +1,4 @@
-# GLM Plan Usage
+# GLM Coding Plan Usage
 
 [Scroll down for English introduction](#english)
 
@@ -9,6 +9,8 @@
 ### 功能特性
 
 - **状态栏监控**：实时显示 5 小时/周配额百分比，颜色预警（🟥≥90% / 🟨70-89% / 🟩<70%），预估充裕时始终显示绿色
+- **侧边栏面板**：活动栏专属面板，展示完整用量统计、配额信息和趋势图表
+- **多模型统计**：按模型分类展示今日用量和 30 天使用趋势
 - **悬停详情**：配额信息、套餐级别、七天用量及今日趋势图
 - **MCP 用量**：每月 MCP 工具调用配额监控，含进度条与用量预估（用量为0时不显示）
 - **使用预估**：基于当前消耗速率预测配额使用情况（使用量 ≥ 50% 时显示）
@@ -16,6 +18,16 @@
 - **趋势图表**：Unicode 柱状图展示每小时使用趋势
 - **配额预警**：使用率 ≥ 90% 自动通知
 - **自动刷新** · **多平台**（智谱/Z.ai）· **中英双语** · **API Key 加密存储**
+
+### 界面预览
+
+#### 状态栏
+
+![状态栏](https://raw.githubusercontent.com/sage-z-cn/vscode-glm-plan-usage-plugin/master/screenshots/statusbar-zh.png)
+
+#### 侧边栏面板
+
+![侧边栏](https://raw.githubusercontent.com/sage-z-cn/vscode-glm-plan-usage-plugin/master/screenshots/sidebar-zh.png)
 
 ### 配置
 
@@ -40,85 +52,6 @@
 
 > **⚡ 安全性说明**：此命令使用 VS Code SecretStorage API，API Key 将通过操作系统密钥管理器加密存储，绝不会写入任何配置文件或 Git 仓库。
 
-### 界面示意
-
-#### 状态栏
-
-状态栏右侧显示用量指标：
-
-```
-GLM: 20% 4.2h | 21% 3.5d
-```
-
-- `20%` `4.2h` - 5小时配额使用率及剩余重置时间
-- `21%` `3.5d` - 周配额使用率及剩余重置时间
-
-#### 悬停显示
-
-> ### 【Pro】GLM Coding Plan 用量
->
-> **更新时间:** 2026/4/13 18:38:47
->
-> ---
->
-> **【5小时配额】**
->
-> 🟩🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 37.0%
->
-> 下次刷新: 0小时 20分钟 (18:59:46)
->
-> **预估用量:** 39.8% | 预期用完: 3小时 55分钟 (22:33)
->
-> ---
->
-> **【周配额】**
->
-> 🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨⬜⬜⬜ 85.0%
->
-> 下次刷新: 2天 22小时 (04-16 星期四 17:02)
->
-> **预估用量:** 128.3% ⚠️ | 预期用完: 1天 8小时 (04-14 星期二 03:15)
->
-> ---
->
-> **【MCP每月用量】**
->
-> 🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥⬜ 15.0%
->
-> 下次刷新: 18天 5小时 (05-11 星期一 00:00)
->
-> **用量:** 150 / 1000 (剩余: 850)
->
-> ---
->
-> **【今日用量】**
->
-> **词元:** 16.50M | 峰值 5.89M@09:00
->
-> **调用:** 500 | 峰值 145@09:00
->
-> **0:00~18:54:**
->
-> ```
-> ▄█▅ ▂▂▇█▃
-> ```
->
-> ---
->
-> **【七天用量】** 37.32M
->
-> 04-11 星期五: 8.32M
->
-> 04-12 星期六: 12.50M
->
-> 04-13 星期日: 16.50M
->
-> 04-14 星期一: 5.20M
->
-> ---
->
-> ⚙️ 设置 | 🔑 配置 API Key | 🔄 刷新
-
 #### 支持的 API 地址
 
 | 平台 | 地址 |
@@ -142,6 +75,8 @@ Real-time monitoring of GLM Coding Plan quota usage in the status bar. Supports 
 ### Features
 
 - **Status Bar**: Real-time 5h/weekly quota %, color-coded alerts (🟥≥90% / 🟡70-89% / 🟢<70%), always green when usage estimate is sufficient
+- **Sidebar Panel**: Dedicated activity bar panel with full usage stats, quota details, and trend charts
+- **Multi-Model Stats**: Per-model daily usage and 30-day usage trend display
 - **Rich Tooltip**: Quota details, plan level, 7-day usage & today's trend chart
 - **MCP Usage**: Monthly MCP tool call quota monitoring with progress bar & usage estimate (hidden when usage is 0)
 - **Usage Estimate**: Predict quota usage based on current consumption rate (shown when usage ≥ 50%)
@@ -149,6 +84,16 @@ Real-time monitoring of GLM Coding Plan quota usage in the status bar. Supports 
 - **Trend Chart**: Unicode bar chart for hourly usage trends
 - **Quota Warning**: Auto notification at ≥90%
 - **Auto Refresh** · **Multi-Platform** (ZHIPU/Z.ai) · **i18n (EN/中文)** · **Encrypted API Key Storage**
+
+### UI Preview
+
+#### Status Bar
+
+![Status Bar](https://raw.githubusercontent.com/sage-z-cn/vscode-glm-plan-usage-plugin/master/screenshots/statusbar-en.png)
+
+#### Sidebar Panel
+
+![Sidebar](https://raw.githubusercontent.com/sage-z-cn/vscode-glm-plan-usage-plugin/master/screenshots/sidebar-en.png)
 
 ### Configuration
 
@@ -172,85 +117,6 @@ Use the command to set your API Key (encrypted storage, never written to files):
 4. Press Enter to save
 
 > **⚡ Security Note**: This command uses VS Code SecretStorage API. Your API Key will be encrypted by the OS keychain manager and never written to any config file or Git repository.
-
-### UI Preview
-
-#### Status Bar
-
-Usage metrics displayed on the right side of the status bar:
-
-```
-GLM: 20% 4.2h | 21% 3.5d
-```
-
-- `20%` `4.2h` - 5-hour quota usage percentage and remaining reset time
-- `21%` `3.5d` - Weekly quota usage percentage and remaining reset time
-
-#### Tooltip
-
-> ### [Pro] GLM Coding Plan Usage
->
-> **Updated:** 2026/4/13 18:38:47
->
-> ---
->
-> **[5 Hour Quota]**
->
-> 🟩🟩🟩🟩🟩🟩🟩⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜ 37.0%
->
-> Next reset: 0h 20m (18:59:46)
->
-> **Usage Estimate:** 39.8% | Time to exhaust: 3h 55m (22:33)
->
-> ---
->
-> **[Weekly Quota]**
->
-> 🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨🟨⬜⬜⬜ 85.0%
->
-> Next reset: 2d 22h (04-16 Thu 17:02)
->
-> **Usage Estimate:** 128.3% ⚠️ | Time to exhaust: 1d 8h (04-14 Tue 03:15)
->
-> ---
->
-> **[MCP Monthly Usage]**
->
-> 🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥🟥⬜ 95.0%
->
-> Next reset: 18d 5h (05-11 Mon 00:00)
->
-> **Usage:** 950 / 1000 (Remaining: 50)
->
-> ---
->
-> **[Today Usage]**
->
-> **Tokens:** 16.50M | Peak 5.89M@09:00
->
-> **Calls:** 500 | Peak 145@09:00
->
-> **0:00~18:54:**
->
-> ```
-> ▄█▅ ▂▂▇█▃
-> ```
->
-> ---
->
-> **[7-Day Usage]** 37.32M
->
-> 04-11 Fri: 8.32M
->
-> 04-12 Sat: 12.50M
->
-> 04-13 Sun: 16.50M
->
-> 04-14 Mon: 5.20M
->
-> ---
->
-> ⚙️ Settings | 🔑 Configure API Key | 🔄 Refresh
 
 #### Supported API URLs
 
