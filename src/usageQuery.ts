@@ -125,10 +125,11 @@ export class UsageQueryService {
     ): Promise<T> {
         return new Promise((resolve, reject) => {
             const parsedUrl = new URL(url);
+            const fullPath = parsedUrl.pathname + (queryParams || '');
             const options = {
                 hostname: parsedUrl.hostname,
                 port: 443,
-                path: parsedUrl.pathname + (queryParams || ''),
+                path: fullPath,
                 method: 'GET',
                 headers: {
                     'Authorization': authToken,
@@ -136,6 +137,8 @@ export class UsageQueryService {
                     'Content-Type': 'application/json'
                 }
             };
+
+            console.log(`[GPU] Request: GET ${parsedUrl.hostname}${fullPath}`);
 
             const req = https.request(options, (res) => {
                 let data = '';
@@ -146,7 +149,10 @@ export class UsageQueryService {
 
                 res.on('end', () => {
                     const statusCode = res.statusCode ?? 0;
+                    console.log(`[GPU] Response: ${statusCode} from ${parsedUrl.hostname}${parsedUrl.pathname}`);
+
                     if (statusCode !== 200) {
+                        console.error(`[GPU] HTTP Error ${statusCode}: ${data.substring(0, 500)}`);
                         let errorMsg: string;
                         if (statusCode === 401) {
                             errorMsg = vscode.l10n.t('Authentication failed (HTTP 401). Please check your API Key.');
@@ -164,6 +170,7 @@ export class UsageQueryService {
                     }
 
                     try {
+                        console.log(`[GPU] Raw response (first 1000 chars): ${data.substring(0, 1000)}`);
                         const json = JSON.parse(data);
                         let outputData = json.data || json;
                         if (postProcessor) {
@@ -171,18 +178,22 @@ export class UsageQueryService {
                         }
                         resolve(outputData);
                     } catch (e) {
+                        console.error(`[GPU] JSON parse failed:`, e);
+                        console.error(`[GPU] Raw response that failed to parse (first 2000 chars): ${data.substring(0, 2000)}`);
                         reject(new Error(vscode.l10n.t('Failed to parse response from server.')));
                     }
                 });
             });
 
             req.on('error', (error) => {
+                console.error(`[GPU] Request error:`, error);
                 reject(error);
             });
 
             // 设置30秒超时
             req.setTimeout(30000, () => {
                 req.destroy();
+                console.error(`[GPU] Request timeout for ${parsedUrl.hostname}${fullPath}`);
                 reject(new Error(vscode.l10n.t('Request timeout after 30 seconds')));
             });
 
