@@ -34,7 +34,7 @@ export class SidebarProvider implements vscode.WebviewViewProvider {
         };
 
         const echartsUri = webviewView.webview.asWebviewUri(
-            vscode.Uri.joinPath(this._context.extensionUri, 'out', 'echarts', 'echarts.min.js')
+            vscode.Uri.joinPath(this._context.extensionUri, 'libs', 'echarts.min.js')
         );
 
         webviewView.webview.html = getHtmlTemplate(echartsUri);

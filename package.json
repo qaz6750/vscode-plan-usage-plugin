@@ -109,7 +109,7 @@
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "npm run copy-echarts && tsc -p ./",
-    "copy-echarts": "node -e \"require('fs').cpSync('src/echarts/echarts.min.js', 'out/echarts/echarts.min.js')\"",
+    "copy-echarts": "node -e \"require('fs').cpSync('libs/echarts.min.js', 'out/echarts/echarts.min.js')\"",
     "postinstall": "npm run copy-echarts",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts"
