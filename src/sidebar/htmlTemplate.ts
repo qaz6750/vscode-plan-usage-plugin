@@ -230,8 +230,8 @@ body {
 <div class="section" id="week-section" style="display:none">
   <div class="section-title">
     <span id="week-section-title"></span>
-    <span class="stat-suffix" id="week-total"></span>
     <span class="radio-link-group" id="day-range-select"></span>
+    <span class="stat-suffix" id="week-total"></span>
   </div>
   <div id="week-chart" class="chart-container" style="height:200px"></div>
 </div>
@@ -285,9 +285,22 @@ body {
 
       const xData = data.xTime.map(function(t) {
         const parts = t.split(' ');
-        return parts.length >= 2 ? parts[1].substring(0, 2) : t;
+        return parts.length >= 2 ? parts[1].substring(0, 2) + ':00' : t;
       });
       const yData = data.yValue.map(function(v) { return v === null ? '-' : v; });
+
+      var startIdx = 0;
+      for (var si = 0; si < yData.length; si++) {
+        if (yData[si] !== '-' && yData[si] !== 0) { startIdx = si; break; }
+      }
+      var slicedX = xData.slice(startIdx);
+      var slicedY = yData.slice(startIdx);
+      var slicedModels = [];
+      if (data.models) {
+        for (var mi = 0; mi < data.models.length; mi++) {
+          slicedModels.push({ model: data.models[mi].model, yValue: data.models[mi].yValue.slice(startIdx) });
+        }
+      }
 
       var series = [];
       var legend = { show: false };
@@ -307,7 +320,7 @@ body {
         series.push({
           name: loc.total || 'Total',
           type: 'line',
-          data: yData,
+          data: slicedY,
           smooth: true,
           symbol: 'none',
           lineStyle: { width: 2, color: '#5985f5', type: 'solid' },
@@ -316,8 +329,8 @@ body {
           connectNulls: false
         });
 
-        for (var i = 0; i < data.models.length; i++) {
-          var m = data.models[i];
+        for (var i = 0; i < slicedModels.length; i++) {
+          var m = slicedModels[i];
           var modelYData = m.yValue.map(function(v) { return v === null ? '-' : v; });
           series.push({
             name: m.model,
@@ -334,7 +347,7 @@ body {
         series.push({
           name: loc.tooltipTokens || 'Tokens',
           type: 'line',
-          data: yData,
+          data: slicedY,
           smooth: true,
           symbol: 'none',
           lineStyle: { width: 1.5, color: c.accent },
@@ -344,12 +357,13 @@ body {
       }
 
       todayChart.setOption({
-        grid: { top: data.models && data.models.length > 0 ? 24 : 12, right: 8, bottom: 20, left: 42 },
+        grid: { top: data.models && data.models.length > 0 ? 24 : 12, right: 8, bottom: 32, left: 42 },
         legend: legend,
         xAxis: {
           type: 'category',
-          data: xData,
-          axisLabel: { fontSize: 9, color: c.text, interval: 0 },
+          data: slicedX,
+          boundaryGap: false,
+          axisLabel: { fontSize: 9, color: c.text, interval: 0, rotate: 45 },
           axisLine: { lineStyle: { color: c.grid } },
           axisTick: { show: false }
         },
@@ -380,7 +394,7 @@ body {
     }
   }
 
-  function initWeekChart(data) {
+  function initWeekChart(data, is30Day) {
     const dom = document.getElementById('week-chart');
     if (!dom) return;
     if (weekChart) weekChart.dispose();
@@ -441,12 +455,15 @@ body {
       });
     }
 
+    var xLabels = is30Day ? data.dates.map(function(d) { var idx = d.indexOf('\\n'); return idx >= 0 ? d.substring(0, idx) : d; }) : data.dates;
+    var tooltipLabels = data.dates;
+
     weekChart.setOption({
       grid: { top: data.models && data.models.length > 0 ? 24 : 8, right: 8, bottom: 32, left: 42 },
       legend: legend,
       xAxis: {
         type: 'category',
-        data: data.dates,
+        data: xLabels,
         boundaryGap: false,
         axisLabel: { fontSize: 9, color: c.text, interval: data.dates.length > 10 ? 4 : 0 },
         axisLine: { lineStyle: { color: c.grid } },
@@ -463,11 +480,11 @@ body {
         textStyle: { fontSize: 10 },
         formatter: function(params) {
           if (!params || params.length === 0) return '';
-          var result = params[0].axisValue;
-          
+          var result = tooltipLabels[params[0].dataIndex];
+
           for (var i = 0; i < params.length; i++) {
             var p = params[i];
-            if (p.value === 0 || p.value === null) continue;
+            if (p.value === null) continue;
             var val = p.value >= 1000000 ? (p.value/1000000).toFixed(1)+'M' : p.value >= 1000 ? (p.value/1000).toFixed(1)+'K' : p.value;
             result += '<br/>' + p.marker + p.seriesName + ': ' + val;
           }
@@ -492,7 +509,7 @@ body {
       html += '<div class="quota-bar-outer"><div class="quota-bar-inner" style="width:' + q.percentage + '%;background:' + q.color + '"></div></div>';
       html += '<div class="quota-meta"><span>' + esc(loc.nextReset || 'Next reset') + ': <span class="quota-value">' + esc(q.nextReset) + '</span></span></div>';
       if (q.currentUsage !== undefined && q.total !== undefined) {
-        html += '<div class="quota-usage-row">' + esc(loc.usage || 'Usage') + ': <span class="quota-value">' + q.currentUsage + ' / ' + q.total + '</span> (' + esc(loc.remaining || 'Remaining') + ': <span class="quota-value">' + (q.remaining ?? (q.total - (q.currentUsage || 0))) + '</span>)</div>';
+        html += '<div class="quota-usage-row">' + esc(loc.usage || 'Usage') + ': <span class="quota-value">' + q.currentUsage + ' / ' + q.total + '</span>, ' + esc(loc.remaining || 'Remaining') + ': <span class="quota-value">' + (q.remaining ?? (q.total - (q.currentUsage || 0))) + '</span></div>';
       }
       if (q.estimate) {
         var estimateParts = q.estimate.split(': ');
@@ -566,7 +583,7 @@ body {
     if (!d) return;
     document.getElementById('week-section-title').textContent = loc.dailyUsage || 'Daily Usage';
     document.getElementById('week-total').textContent = (loc.total || 'Total') + ': ' + d.total;
-    initWeekChart(d);
+    initWeekChart(d, currentRange === '30');
   }
 
   window.doRefresh = function() {
