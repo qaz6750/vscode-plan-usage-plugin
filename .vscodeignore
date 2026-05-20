@@ -7,3 +7,9 @@ src
 .gitignore
 tsconfig.json
 !libs/echarts.min.js
+.claude
+.docs
+.sisyphus
+screenshots
+AGENTS.md
+pnpm-lock.yaml
