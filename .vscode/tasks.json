@@ -28,6 +28,24 @@
         "showReuseMessage": true,
         "clear": true
       }
+    },
+    {
+      "label": "vsce: build and install",
+      "type": "shell",
+      "command": "npx @vscode/vsce package -o build/extension.vsix && code --install-extension build/extension.vsix --force",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": true
+      }
     }
   ]
 }
