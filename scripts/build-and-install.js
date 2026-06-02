@@ -10,6 +10,9 @@ const vsixPath = path.join(outDir, vsixName);
 
 fs.mkdirSync(outDir, { recursive: true });
 
+console.log("Compiling TypeScript ...");
+execSync("npm run compile", { cwd: root, stdio: "inherit" });
+
 console.log(`Packaging ${vsixName} ...`);
 execSync(`npx @vscode/vsce package -o "${vsixPath}"`, { cwd: root, stdio: "inherit" });
 

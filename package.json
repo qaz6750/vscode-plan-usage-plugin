@@ -111,7 +111,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "package": "vsce package --out ./release/",
+    "package": "npm run compile && vsce package --out ./release/",
     "build-and-install": "node scripts/build-and-install.js"
   },
   "devDependencies": {
