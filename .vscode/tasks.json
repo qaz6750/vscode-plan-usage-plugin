@@ -30,6 +30,16 @@
       }
     },
     {
+      "label": "publish",
+      "type": "npm",
+      "script": "publish",
+      "problemMatcher": ["$tsc"],
+      "group": "build",
+      "presentation": {
+        "reveal": "always"
+      }
+    },
+    {
       "label": "build and install",
       "type": "shell",
       "command": "npm run build-and-install",

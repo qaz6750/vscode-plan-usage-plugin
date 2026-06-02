@@ -112,6 +112,7 @@
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
     "package": "npm run compile && vsce package --out ./release/",
+    "publish": "npm run compile && npx @vscode/vsce publish",
     "build-and-install": "node scripts/build-and-install.js"
   },
   "devDependencies": {
