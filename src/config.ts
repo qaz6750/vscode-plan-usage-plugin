@@ -90,6 +90,12 @@ export class ConfigManager {
         return process.env.GLM_USE_MOCK === 'true';
     }
 
+    /** 是否启用请求失败自动重试（默认开启，最多重试 3 次） */
+    static isRetryEnabled(): boolean {
+        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
+        return config.get<boolean>('enableRetry') ?? true;
+    }
+
     static async validateConfig(): Promise<{ valid: boolean; error?: string }> {
         const authToken = await this.getAuthToken();
         const baseUrl = this.getBaseUrl();

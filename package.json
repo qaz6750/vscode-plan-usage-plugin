@@ -102,6 +102,11 @@
           "type": "number",
           "default": 1800,
           "description": "%configuration.afkThreshold.description%"
+        },
+        "glmPlanUsage.enableRetry": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.enableRetry.description%"
         }
       }
     }

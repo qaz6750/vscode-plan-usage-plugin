@@ -117,6 +117,59 @@ export class UsageQueryService {
         });
     }
 
+    private static readonly MAX_RETRY_COUNT = 3;
+    private static readonly RETRY_DELAY_MS = 1000;
+
+    /** 判断错误是否可重试（网络错误、超时、5xx） */
+    private static isRetryableError(error: unknown): boolean {
+        if (error instanceof Error) {
+            const msg = error.message;
+            // 网络错误和超时
+            if (msg.includes('ECONNRESET') || msg.includes('ETIMEDOUT') ||
+                msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED') ||
+                msg.includes('socket hang up') || msg.includes('timeout')) {
+                return true;
+            }
+            // 5xx 服务器错误
+            if (msg.includes('HTTP 5')) {
+                return true;
+            }
+            // 429 限流
+            if (msg.includes('HTTP 429')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static async httpsGetWithRetry<T>(
+        url: string,
+        authToken: string,
+        queryParams?: string,
+        postProcessor?: (data: any) => T
+    ): Promise<T> {
+        const shouldRetry = ConfigManager.isRetryEnabled();
+        let lastError: unknown;
+
+        const maxAttempts = shouldRetry ? this.MAX_RETRY_COUNT + 1 : 1;
+
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                return await this.httpsGet(url, authToken, queryParams, postProcessor);
+            } catch (error) {
+                lastError = error;
+                if (attempt < maxAttempts && this.isRetryableError(error)) {
+                    console.log(`[GPU] Retry ${attempt}/${this.MAX_RETRY_COUNT} for ${url}`);
+                    await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY_MS * attempt));
+                    continue;
+                }
+                throw error;
+            }
+        }
+
+        throw lastError;
+    }
+
     private static async httpsGet<T>(
         url: string,
         authToken: string,
@@ -288,9 +341,9 @@ export class UsageQueryService {
         const queryParams30 = `?startTime=${encodeURIComponent(startTime30)}&endTime=${encodeURIComponent(endTime30)}`;
 
         const [modelUsageRaw, toolUsageRaw, quotaLimitResponse, modelUsage30Raw] = await Promise.all([
-            this.httpsGet<any>(modelUsageUrl, authToken, queryParams),
-            this.httpsGet<any>(toolUsageUrl, authToken, queryParams),
-            this.httpsGet<any>(quotaLimitUrl, authToken, undefined, (data) => {
+            this.httpsGetWithRetry<any>(modelUsageUrl, authToken, queryParams),
+            this.httpsGetWithRetry<any>(toolUsageUrl, authToken, queryParams),
+            this.httpsGetWithRetry<any>(quotaLimitUrl, authToken, undefined, (data) => {
                 const processedQuotaLimits = this.processQuotaLimit(data);
                 return {
                     limits: data?.data?.limits || data?.limits || [],
@@ -298,7 +351,7 @@ export class UsageQueryService {
                     processedQuotaLimits
                 };
             }),
-            this.httpsGet<any>(modelUsageUrl, authToken, queryParams30)
+            this.httpsGetWithRetry<any>(modelUsageUrl, authToken, queryParams30)
         ]);
 
         const modelUsage = this.ensureArray<ModelUsageData>(modelUsageRaw?.modelUsage || modelUsageRaw);
