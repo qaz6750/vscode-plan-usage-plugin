@@ -221,6 +221,10 @@ body {
 <div class="section" id="today-section" style="display:none">
   <div class="section-title">
     <span id="today-section-title"></span>
+    <span class="radio-link-group" id="today-metric-select">
+      <span id="today-metric-tokens" class="radio-link active" data-value="tokens">Tokens</span>
+      <span id="today-metric-calls" class="radio-link" data-value="calls">Calls</span>
+    </span>
     <span class="stat-suffix" id="today-tokens-wrap"><span id="today-tokens-label"></span>: <span id="today-tokens">--</span></span>
     <span class="stat-suffix" id="today-calls-wrap"><span id="today-calls-label"></span>: <span id="today-calls">--</span></span>
   </div>
@@ -231,7 +235,12 @@ body {
   <div class="section-title">
     <span id="week-section-title"></span>
     <span class="radio-link-group" id="day-range-select"></span>
+    <span class="radio-link-group" id="week-metric-select">
+      <span id="week-metric-tokens" class="radio-link active" data-value="tokens">Tokens</span>
+      <span id="week-metric-calls" class="radio-link" data-value="calls">Calls</span>
+    </span>
     <span class="stat-suffix" id="week-total"></span>
+    <span class="stat-suffix" id="week-total-calls"></span>
   </div>
   <div id="week-chart" class="chart-container" style="height:200px"></div>
 </div>
@@ -258,6 +267,7 @@ body {
   let loc = {};
   let storedData = null;
   let currentRange = '7';
+  let currentMetric = 'tokens';
 
   function isDark() {
     return document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast');
@@ -274,7 +284,7 @@ body {
     return ['#f38441', '#b86fe5', '#00c9a7', '#ff6b6b', '#4ecdc4', '#ffd93d', '#6c5ce7', '#a8e6cf'];
   }
 
-  function initTodayChart(data) {
+  function initTodayChart(data, metric) {
     try {
       const dom = document.getElementById('today-chart');
       if (!dom) return;
@@ -287,7 +297,9 @@ body {
         const parts = t.split(' ');
         return parts.length >= 2 ? parts[1].substring(0, 2) + ':00' : t;
       });
-      const yData = data.yValue.map(function(v) { return v === null ? '-' : v; });
+      metric = metric || 'tokens';
+      var mainData = metric === 'calls' ? (data.callCount || []) : data.yValue;
+      var yData = mainData.map(function(v) { return v === null ? '-' : v; });
 
       var startIdx = 0;
       for (var si = 0; si < yData.length; si++) {
@@ -296,9 +308,19 @@ body {
       var slicedX = xData.slice(startIdx);
       var slicedY = yData.slice(startIdx);
       var slicedModels = [];
+      
+      // Save full data for dual-metric tooltip (closure)
+      var _totalTokens = data.yValue.slice(startIdx);
+      var _totalCalls = (data.callCount || []).slice(startIdx);
+      var _modelMap = {};
       if (data.models) {
         for (var mi = 0; mi < data.models.length; mi++) {
-          slicedModels.push({ model: data.models[mi].model, yValue: data.models[mi].yValue.slice(startIdx) });
+          var md = data.models[mi];
+          var mTokens = md.yValue.slice(startIdx);
+          var mCalls = (md.callCount || []).slice(startIdx);
+          _modelMap[md.model] = { tokens: mTokens, calls: mCalls };
+          var mData = metric === 'calls' ? mCalls : mTokens;
+          slicedModels.push({ model: md.model, yValue: mData.map(function(v) { return v === null ? '-' : v; }) });
         }
       }
 
@@ -331,11 +353,10 @@ body {
 
         for (var i = 0; i < slicedModels.length; i++) {
           var m = slicedModels[i];
-          var modelYData = m.yValue.map(function(v) { return v === null ? '-' : v; });
           series.push({
             name: m.model,
             type: 'line',
-            data: modelYData,
+            data: m.yValue,
             smooth: true,
             symbol: 'none',
             lineStyle: { width: 1.5, color: colors[i % colors.length] },
@@ -345,7 +366,7 @@ body {
         }
       } else {
         series.push({
-          name: loc.tooltipTokens || 'Tokens',
+          name: metric === 'calls' ? (loc.calls || 'Calls') : (loc.tooltipTokens || 'Tokens'),
           type: 'line',
           data: slicedY,
           smooth: true,
@@ -369,7 +390,7 @@ body {
         },
         yAxis: {
           type: 'value',
-          axisLabel: { fontSize: 9, color: c.text, formatter: function(v) { return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } },
+          axisLabel: { fontSize: 9, color: c.text, formatter: metric === 'calls' ? function(v) { return v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } : function(v) { return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } },
           splitLine: { lineStyle: { color: c.grid } }
         },
         series: series,
@@ -379,13 +400,47 @@ body {
           formatter: function(params) {
             if (!params || params.length === 0) return '';
             var result = params[0].axisValue;
+            var hasData = false;
             for (var i = 0; i < params.length; i++) {
               var p = params[i];
-              if (p.value === 0 || p.value === null || p.value === '-') continue;
-              var val = p.value >= 1000000 ? (p.value/1000000).toFixed(1)+'M' : p.value >= 1000 ? (p.value/1000).toFixed(1)+'K' : p.value;
-              result += '<br/>' + p.marker + p.seriesName + ': ' + val;
+              var idx = p.dataIndex;
+              var tokenVal, callVal;
+              if (p.seriesName === (loc.total || 'Total')) {
+                tokenVal = _totalTokens[idx];
+                callVal = _totalCalls[idx];
+              } else {
+                var mm = _modelMap[p.seriesName];
+                if (mm) {
+                  tokenVal = mm.tokens ? mm.tokens[idx] : null;
+                  callVal = mm.calls ? mm.calls[idx] : null;
+                }
+              }
+              if (tokenVal === null && callVal === null) continue;
+              if ((tokenVal === null || tokenVal === '-' || tokenVal === undefined || tokenVal === 0) &&
+                  (callVal === null || callVal === '-' || callVal === undefined || callVal === 0)) continue;
+              
+              hasData = true;
+              var isTotal = p.seriesName === (loc.total || 'Total');
+              result += '<br/>' + p.marker + p.seriesName + ': ';
+              // Token value
+              if (tokenVal !== null && tokenVal !== '-' && tokenVal !== undefined) {
+                result += (tokenVal >= 1000000 ? (tokenVal/1000000).toFixed(1)+'M' : tokenVal >= 1000 ? (tokenVal/1000).toFixed(1)+'K' : tokenVal);
+              } else {
+                result += '--';
+              }
+              result += ' ' + (loc.tooltipTokens || 'Tokens');
+              // Call value — only for Total
+              if (isTotal) {
+                result += ', ';
+                if (callVal !== null && callVal !== '-' && callVal !== undefined) {
+                  result += callVal;
+                } else {
+                  result += '--';
+                }
+                result += ' ' + (loc.calls || 'Calls');
+              }
             }
-            return result;
+            return hasData ? result : '';
           }
         }
       });
@@ -394,13 +449,29 @@ body {
     }
   }
 
-  function initWeekChart(data, is30Day) {
+  function initWeekChart(data, is30Day, metric) {
     const dom = document.getElementById('week-chart');
     if (!dom) return;
     if (weekChart) weekChart.dispose();
     weekChart = echarts.init(dom);
     const c = chartColors();
     const colors = modelColors();
+
+    metric = metric || 'tokens';
+    var mainTokens = data.tokens;
+    var mainCalls = data.calls || [];
+    var mainData = metric === 'calls' ? mainCalls : mainTokens;
+
+    // Save full data for dual-metric tooltip (closure)
+    var _wTokens = mainTokens;
+    var _wCalls = mainCalls;
+    var _wModelMap = {};
+    if (data.models) {
+      for (var mi = 0; mi < data.models.length; mi++) {
+        var md = data.models[mi];
+        _wModelMap[md.model] = { tokens: md.tokens, calls: md.calls || [] };
+      }
+    }
 
     var series = [];
     var legend = { show: false };
@@ -420,7 +491,7 @@ body {
       series.push({
         name: loc.total || 'Total',
         type: 'line',
-        data: data.tokens,
+        data: mainData,
         smooth: true,
         symbol: 'none',
         lineStyle: { width: 2, color: '#5985f5', type: 'solid' },
@@ -431,10 +502,11 @@ body {
       
       for (var i = 0; i < data.models.length; i++) {
         var m = data.models[i];
+        var mData = metric === 'calls' ? (m.calls || []) : m.tokens;
         series.push({
           name: m.model,
           type: 'line',
-          data: m.tokens,
+          data: mData,
           smooth: true,
           symbol: 'none',
           lineStyle: { width: 1.5, color: colors[i % colors.length] },
@@ -444,9 +516,9 @@ body {
       }
     } else {
       series.push({
-        name: loc.tooltipTokens || 'Tokens',
+        name: metric === 'calls' ? (loc.calls || 'Calls') : (loc.tooltipTokens || 'Tokens'),
         type: 'line',
-        data: data.tokens,
+        data: mainData,
         smooth: true,
         symbol: 'none',
         lineStyle: { width: 1.5, color: c.accent },
@@ -471,7 +543,7 @@ body {
       },
       yAxis: {
         type: 'value',
-        axisLabel: { fontSize: 9, color: c.text, formatter: function(v) { return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } },
+        axisLabel: { fontSize: 9, color: c.text, formatter: metric === 'calls' ? function(v) { return v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } : function(v) { return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'K' : v; } },
         splitLine: { lineStyle: { color: c.grid } }
       },
       series: series,
@@ -480,15 +552,48 @@ body {
         textStyle: { fontSize: 10 },
         formatter: function(params) {
           if (!params || params.length === 0) return '';
-          var result = tooltipLabels[params[0].dataIndex];
-
+          var idx = params[0].dataIndex;
+          var result = tooltipLabels[idx];
+          var hasData = false;
           for (var i = 0; i < params.length; i++) {
             var p = params[i];
-            if (p.value === null) continue;
-            var val = p.value >= 1000000 ? (p.value/1000000).toFixed(1)+'M' : p.value >= 1000 ? (p.value/1000).toFixed(1)+'K' : p.value;
-            result += '<br/>' + p.marker + p.seriesName + ': ' + val;
+            var tokenVal, callVal;
+            if (p.seriesName === (loc.total || 'Total')) {
+              tokenVal = _wTokens[idx];
+              callVal = _wCalls[idx];
+            } else {
+              var mm = _wModelMap[p.seriesName];
+              if (mm) {
+                tokenVal = mm.tokens ? mm.tokens[idx] : null;
+                callVal = mm.calls ? mm.calls[idx] : null;
+              }
+            }
+            if (tokenVal === null && callVal === null) continue;
+            if ((tokenVal === null || tokenVal === undefined || tokenVal === 0) &&
+                (callVal === null || callVal === undefined || callVal === 0)) continue;
+            
+            hasData = true;
+            var isTotal = p.seriesName === (loc.total || 'Total');
+            result += '<br/>' + p.marker + p.seriesName + ': ';
+            // Token value
+            if (tokenVal !== null && tokenVal !== undefined) {
+              result += (tokenVal >= 1000000 ? (tokenVal/1000000).toFixed(1)+'M' : tokenVal >= 1000 ? (tokenVal/1000).toFixed(1)+'K' : tokenVal);
+            } else {
+              result += '--';
+            }
+            result += ' ' + (loc.tooltipTokens || 'Tokens');
+            // Call value — only for Total
+            if (isTotal) {
+              result += ', ';
+              if (callVal !== null && callVal !== undefined) {
+                result += callVal;
+              } else {
+                result += '--';
+              }
+              result += ' ' + (loc.calls || 'Calls');
+            }
           }
-          return result;
+          return hasData ? result : '';
         }
       }
     });
@@ -548,6 +653,17 @@ body {
     document.getElementById('settings-label').textContent = loc.settings || 'Settings';
     document.getElementById('apikey-label').textContent = loc.configureApiKey || 'Configure API Key';
 
+    // Set metric toggle labels from locale
+    var todayTokensBtn = document.getElementById('today-metric-tokens');
+    var todayCallsBtn = document.getElementById('today-metric-calls');
+    if (todayTokensBtn) todayTokensBtn.textContent = loc.tokens || 'Tokens';
+    if (todayCallsBtn) todayCallsBtn.textContent = loc.calls || 'Calls';
+    var weekTokensBtn = document.getElementById('week-metric-tokens');
+    var weekCallsBtn = document.getElementById('week-metric-calls');
+    if (weekTokensBtn) weekTokensBtn.textContent = loc.tokens || 'Tokens';
+    if (weekCallsBtn) weekCallsBtn.textContent = loc.calls || 'Calls';
+    syncMetricToggleUI();
+
     updateQuotas(data.quotas);
 
     var todaySection = document.getElementById('today-section');
@@ -558,7 +674,7 @@ body {
       document.getElementById('today-calls-label').textContent = loc.calls || 'Calls';
       document.getElementById('today-tokens').textContent = data.today.totalTokens;
       document.getElementById('today-calls').textContent = data.today.totalCalls;
-      initTodayChart(data.today);
+      initTodayChart(data.today, currentMetric);
     } else {
       todaySection.style.display = 'none';
     }
@@ -582,9 +698,51 @@ body {
     if (!d) { d = storedData.week || storedData.month; }
     if (!d) return;
     document.getElementById('week-section-title').textContent = loc.dailyUsage || 'Daily Usage';
-    document.getElementById('week-total').textContent = (loc.total || 'Total') + ': ' + d.total;
-    initWeekChart(d, currentRange === '30');
+    document.getElementById('week-total').textContent = (loc.tokens || 'Tokens') + ': ' + d.total;
+    if (d.totalCalls) {
+      document.getElementById('week-total-calls').textContent = (loc.calls || 'Calls') + ': ' + d.totalCalls;
+    } else {
+      document.getElementById('week-total-calls').textContent = '';
+    }
+    initWeekChart(d, currentRange === '30', currentMetric);
   }
+
+  function syncMetricToggleUI() {
+    var allLinks = document.querySelectorAll('#today-metric-select .radio-link, #week-metric-select .radio-link');
+    for (var i = 0; i < allLinks.length; i++) {
+      var link = allLinks[i];
+      if (link.dataset.value === currentMetric) {
+        link.classList.add('active');
+      } else {
+        link.classList.remove('active');
+      }
+    }
+  }
+
+  function onMetricToggle(metric) {
+    if (metric === currentMetric) return;
+    currentMetric = metric;
+    syncMetricToggleUI();
+    // Re-render today chart if data available
+    if (storedData && storedData.today) {
+      initTodayChart(storedData.today, currentMetric);
+    }
+    // Re-render week chart if data available
+    renderDailyChart();
+  }
+
+  // Metric toggle click handler (event delegation on both toggle groups)
+  function addMetricToggleHandler(selector) {
+    var el = document.getElementById(selector);
+    if (!el) return;
+    el.addEventListener('click', function(e) {
+      var btn = e.target.closest('.radio-link');
+      if (!btn) return;
+      onMetricToggle(btn.dataset.value);
+    });
+  }
+  addMetricToggleHandler('today-metric-select');
+  addMetricToggleHandler('week-metric-select');
 
   window.doRefresh = function() {
     vscodeApi.postMessage({ command: 'refresh' });

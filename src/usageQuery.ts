@@ -273,7 +273,7 @@ export class UsageQueryService {
             model: item.modelName || '',
             xTime: data.x_time,
             yValue: item.tokensUsage || [],
-            callCount: []
+            callCount: item.modelCallCount || item.callCount || []
         }));
         
         return {

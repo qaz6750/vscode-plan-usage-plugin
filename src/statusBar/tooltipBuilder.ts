@@ -162,7 +162,7 @@ export function filterTodayData(trend: TrendData): {
     return { totalTokens, totalCalls, xTime: todayXTime, yValue: todayYValue, modelCallCount: todayModelCallCount };
 }
 
-export function filterTodayDataByModel(trend: TrendData): { model: string; xTime: string[]; yValue: (number | null)[] }[] {
+export function filterTodayDataByModel(trend: TrendData): { model: string; xTime: string[]; yValue: (number | null)[]; callCount: (number | null)[] }[] {
     if (!trend.modelDataList || trend.modelDataList.length === 0) {
         return [];
     }
@@ -173,19 +173,22 @@ export function filterTodayDataByModel(trend: TrendData): { model: string; xTime
     return trend.modelDataList.map(modelTrend => {
         const todayXTime: string[] = [];
         const todayYValue: (number | null)[] = [];
+        const todayCallCount: (number | null)[] = [];
 
         for (let i = 0; i < modelTrend.xTime.length; i++) {
             const timeStr = modelTrend.xTime[i];
             if (timeStr.startsWith(todayStr)) {
                 todayXTime.push(timeStr);
                 todayYValue.push(modelTrend.yValue[i]);
+                todayCallCount.push(modelTrend.callCount[i]);
             }
         }
 
         return {
             model: modelTrend.model,
             xTime: todayXTime,
-            yValue: todayYValue
+            yValue: todayYValue,
+            callCount: todayCallCount
         };
     }).filter(m => m.xTime.length > 0 && m.yValue.some(v => v !== null && v !== undefined && v > 0));
 }
@@ -214,6 +217,54 @@ export function aggregateDailyData(trend: TrendData): { date: string; tokens: nu
         });
 
     return sorted;
+}
+
+export function aggregateDailyCalls(trend: TrendData): number[] {
+    const dayMap = new Map<string, number>();
+
+    for (let i = 0; i < trend.xTime.length; i++) {
+        const timeStr = trend.xTime[i];
+        const dateKey = timeStr.split(' ')[0];
+        const val = trend.modelCallCount[i];
+        if (val !== null && val !== undefined) {
+            dayMap.set(dateKey, (dayMap.get(dateKey) || 0) + val);
+        }
+    }
+
+    const sorted = Array.from(dayMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([, calls]) => calls);
+
+    return sorted;
+}
+
+export function aggregateDailyCallsByModel(trend: TrendData): { model: string; dates: string[]; calls: number[] }[] {
+    if (!trend.modelDataList || trend.modelDataList.length === 0) {
+        return [];
+    }
+
+    return trend.modelDataList.map(modelTrend => {
+        const dayMap = new Map<string, number>();
+
+        for (let i = 0; i < modelTrend.xTime.length; i++) {
+            const timeStr = modelTrend.xTime[i];
+            const dateKey = timeStr.split(' ')[0];
+            const val = modelTrend.callCount[i];
+            if (val !== null && val !== undefined) {
+                dayMap.set(dateKey, (dayMap.get(dateKey) || 0) + val);
+            }
+        }
+
+        const sorted = Array.from(dayMap.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([, calls]) => calls);
+
+        return {
+            model: modelTrend.model,
+            dates: [],
+            calls: sorted
+        };
+    });
 }
 
 export function aggregateDailyDataByModel(trend: TrendData): { model: string; dates: string[]; tokens: number[] }[] {

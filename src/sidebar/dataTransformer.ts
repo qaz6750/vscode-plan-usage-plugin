@@ -3,7 +3,7 @@ import { UsageResponse } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
-import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
+import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
 
 function colorForPercentage(pct: number): string {
     if (pct >= 90) { return '#F44747'; }
@@ -47,6 +47,7 @@ export interface ModelTodayData {
     model: string;
     xTime: string[];
     yValue: (number | null)[];
+    callCount: (number | null)[];
 }
 
 export interface TodayData {
@@ -56,6 +57,7 @@ export interface TodayData {
     peakCalls: string;
     xTime: string[];
     yValue: (number | null)[];
+    callCount: (number | null)[];
     peakTokenValue?: number;
     peakTokenIndex?: number;
     models?: ModelTodayData[];
@@ -65,13 +67,16 @@ export interface ModelDailyData {
     model: string;
     dates: string[];
     tokens: number[];
+    calls: number[];
     total: string;
 }
 
 export interface DailyData {
     dates: string[];
     tokens: number[];
+    calls: number[];
     total: string;
+    totalCalls?: string;
     models?: ModelDailyData[];
 }
 
@@ -160,7 +165,8 @@ export function transformResponse(response: UsageResponse): SidebarData {
         const todayModels = todayModelData.map(md => ({
             model: md.model,
             xTime: md.xTime,
-            yValue: md.yValue
+            yValue: md.yValue,
+            callCount: md.callCount
         }));
 
         today = {
@@ -170,6 +176,7 @@ export function transformResponse(response: UsageResponse): SidebarData {
             peakCalls: '',
             xTime: todayData.xTime,
             yValue: todayData.yValue,
+            callCount: todayData.modelCallCount,
             models: todayModels.length > 0 ? todayModels : undefined
         };
 
@@ -191,18 +198,32 @@ export function transformResponse(response: UsageResponse): SidebarData {
             const last7 = dailyData.slice(-7);
             const last7Total = last7.reduce((sum, d) => sum + d.tokens, 0);
             
+            const dailyCalls = aggregateDailyCalls(weekSource);
+            const last7Calls = dailyCalls.slice(-7);
+            const last7CallsTotal = last7Calls.reduce((sum, c) => sum + c, 0);
+            
             const modelDailyData = aggregateDailyDataByModel(weekSource);
-            const last7Models = modelDailyData.map(md => ({
-                model: md.model,
-                dates: md.dates.slice(-7),
-                tokens: md.tokens.slice(-7),
-                total: formatTokens(md.tokens.slice(-7).reduce((sum, t) => sum + t, 0))
-            })).filter(md => md.tokens.some(t => t > 0));
+            const modelDailyCalls = aggregateDailyCallsByModel(weekSource);
+            const callsByModel = new Map(modelDailyCalls.map(mc => [mc.model, mc.calls]));
+            
+            const last7Models = modelDailyData.map(md => {
+                const modelCalls = callsByModel.get(md.model) || [];
+                const callsSlice = modelCalls.slice(-7);
+                return {
+                    model: md.model,
+                    dates: md.dates.slice(-7),
+                    tokens: md.tokens.slice(-7),
+                    calls: callsSlice,
+                    total: formatTokens(md.tokens.slice(-7).reduce((sum, t) => sum + t, 0))
+                };
+            }).filter(md => md.tokens.some(t => t > 0));
             
             week = {
                 dates: last7.map(d => d.date),
                 tokens: last7.map(d => d.tokens),
+                calls: last7Calls,
                 total: formatTokens(last7Total),
+                totalCalls: String(last7CallsTotal),
                 models: last7Models.length > 0 ? last7Models : undefined
             };
         }
@@ -212,28 +233,41 @@ export function transformResponse(response: UsageResponse): SidebarData {
             if (monthData.length > 0) {
                 const allTotal = monthData.reduce((sum, d) => sum + d.tokens, 0);
                 
+                const monthCalls = aggregateDailyCalls(response.monthTrend);
+                const allCallsTotal = monthCalls.reduce((sum, c) => sum + c, 0);
+                
                 const monthModelData = aggregateDailyDataByModel(response.monthTrend);
-                const monthModels = monthModelData.map(md => ({
-                    model: md.model,
-                    dates: md.dates,
-                    tokens: md.tokens,
-                    total: formatTokens(md.tokens.reduce((sum, t) => sum + t, 0))
-                })).filter(md => md.tokens.some(t => t > 0));
+                const monthModelCalls = aggregateDailyCallsByModel(response.monthTrend);
+                const monthCallsByModel = new Map(monthModelCalls.map(mc => [mc.model, mc.calls]));
+                
+                const monthModels = monthModelData.map(md => {
+                    const modelCalls = monthCallsByModel.get(md.model) || [];
+                    return {
+                        model: md.model,
+                        dates: md.dates,
+                        tokens: md.tokens,
+                        calls: modelCalls,
+                        total: formatTokens(md.tokens.reduce((sum, t) => sum + t, 0))
+                    };
+                }).filter(md => md.tokens.some(t => t > 0));
                 
                 month = {
                     dates: monthData.map(d => d.date),
                     tokens: monthData.map(d => d.tokens),
+                    calls: monthCalls,
                     total: formatTokens(allTotal),
+                    totalCalls: String(allCallsTotal),
                     models: monthModels.length > 0 ? monthModels : undefined
                 };
             }
         } else if (dailyData.length > 0) {
+            const dailyCalls = aggregateDailyCalls(weekSource);
             month = {
                 dates: dailyData.map(d => d.date),
                 tokens: dailyData.map(d => d.tokens),
-                total: dailyData.reduce((sum, d) => sum + d.tokens, 0).toString()
+                calls: dailyCalls,
+                total: formatTokens(dailyData.reduce((sum, d) => sum + d.tokens, 0))
             };
-            month.total = formatTokens(dailyData.reduce((sum, d) => sum + d.tokens, 0));
         }
     }
 
