@@ -17,7 +17,7 @@ export function calculateUsageEstimate(
         return null;
     }
 
-    if (percentage < 50) {
+    if (percentage < 50 || percentage >= 100) {
         return null;
     }
 
