@@ -107,6 +107,11 @@
           "type": "boolean",
           "default": true,
           "description": "%configuration.enableRetry.description%"
+        },
+        "glmPlanUsage.resetNotification": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.resetNotification.description%"
         }
       }
     }

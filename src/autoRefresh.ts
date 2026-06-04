@@ -6,12 +6,15 @@ import { ActivityMonitor } from './activityMonitor';
 import { StatusBarManager } from './statusBar';
 import { UsageCache } from './cache';
 import { QuotaWarningChecker } from './quotaWarning';
+import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from './constants';
 
 const RESET_DELAY_MS = 10_000;
 
+type ResetTimerEntry = { timer: NodeJS.Timeout; types: string[] };
+
 export class AutoRefreshManager implements vscode.Disposable {
     private autoRefreshTimer: NodeJS.Timeout | undefined;
-    private resetTimers: NodeJS.Timeout[] = [];
+    private resetTimers: ResetTimerEntry[] = [];
     private activityMonitor: ActivityMonitor | undefined;
     private previousState: UserActivityState = UserActivityState.ACTIVE;
     private isRefreshing = false;
@@ -48,27 +51,41 @@ export class AutoRefreshManager implements vscode.Disposable {
         this.clearResetTimers();
 
         const now = Date.now();
-        let minDelay = Infinity;
+        const resetTypes = new Map<number, string[]>();
 
         for (const limit of response.quotaLimits) {
             if (limit.nextResetTime && limit.nextResetTime > now) {
-                const delay = limit.nextResetTime - now + RESET_DELAY_MS;
-                if (delay < minDelay) {
-                    minDelay = delay;
+                const key = limit.nextResetTime;
+                if (!resetTypes.has(key)) {
+                    resetTypes.set(key, []);
                 }
+                resetTypes.get(key)!.push(limit.type);
             }
         }
 
-        if (minDelay === Infinity) {
-            return;
+        for (const [resetTime, types] of resetTypes) {
+            const delay = resetTime - now + RESET_DELAY_MS;
+            const timer = setTimeout(async () => {
+                if (await ConfigManager.hasValidConfig()) {
+                    await this.queryUsage(true);
+                    if (ConfigManager.isResetNotificationEnabled()) {
+                        this.showResetNotification(types);
+                    }
+                }
+            }, delay);
+            this.resetTimers.push({ timer, types });
         }
+    }
 
-        const timer = setTimeout(async () => {
-            if (await ConfigManager.hasValidConfig()) {
-                await this.queryUsage(true);
-            }
-        }, minDelay);
-        this.resetTimers.push(timer);
+    private showResetNotification(types: string[]): void {
+        const names = types
+            .map(t => t === QUOTA_TYPE_5H ? vscode.l10n.t('5 Hour Quota') : t === QUOTA_TYPE_WEEKLY ? vscode.l10n.t('Weekly Quota') : t)
+            .filter(n => n);
+        if (names.length === 0) { return; }
+        const joined = names.join(', ');
+        vscode.window.showInformationMessage(
+            vscode.l10n.t('{0} has been reset', joined)
+        );
     }
 
     private getCurrentPollingInterval(): number {
@@ -120,8 +137,8 @@ export class AutoRefreshManager implements vscode.Disposable {
     }
 
     private clearResetTimers(): void {
-        for (const timer of this.resetTimers) {
-            clearTimeout(timer);
+        for (const entry of this.resetTimers) {
+            clearTimeout(entry.timer);
         }
         this.resetTimers = [];
     }

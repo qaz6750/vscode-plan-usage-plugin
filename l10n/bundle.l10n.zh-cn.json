@@ -78,5 +78,6 @@
   "Usage": "用量",
   "Remaining": "剩余",
   "Estimated": "预估",
-  "Loading...": "加载中..."
+  "Loading...": "加载中...",
+  "{0} has been reset": "{0}已刷新"
 }

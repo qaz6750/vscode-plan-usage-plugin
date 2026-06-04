@@ -96,6 +96,12 @@ export class ConfigManager {
         return config.get<boolean>('enableRetry') ?? true;
     }
 
+    /** 是否启用配额重置通知（默认开启） */
+    static isResetNotificationEnabled(): boolean {
+        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
+        return config.get<boolean>('resetNotification') ?? true;
+    }
+
     static async validateConfig(): Promise<{ valid: boolean; error?: string }> {
         const authToken = await this.getAuthToken();
         const baseUrl = this.getBaseUrl();
