@@ -9,6 +9,7 @@ import { QuotaWarningChecker } from './quotaWarning';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from './constants';
 
 const RESET_DELAY_MS = 10_000;
+const MIN_RESET_SCHEDULE_MS = 60_000;
 
 type ResetTimerEntry = { timer: NodeJS.Timeout; types: string[] };
 
@@ -54,7 +55,8 @@ export class AutoRefreshManager implements vscode.Disposable {
         const resetTypes = new Map<number, string[]>();
 
         for (const limit of response.quotaLimits) {
-            if (limit.nextResetTime && limit.nextResetTime > now) {
+            if (limit.nextResetTime && limit.nextResetTime > now
+                && (limit.type === QUOTA_TYPE_5H || limit.type === QUOTA_TYPE_WEEKLY)) {
                 const key = limit.nextResetTime;
                 if (!resetTypes.has(key)) {
                     resetTypes.set(key, []);
@@ -65,6 +67,7 @@ export class AutoRefreshManager implements vscode.Disposable {
 
         for (const [resetTime, types] of resetTypes) {
             const delay = resetTime - now + RESET_DELAY_MS;
+            if (delay < MIN_RESET_SCHEDULE_MS) { continue; }
             const timer = setTimeout(async () => {
                 if (await ConfigManager.hasValidConfig()) {
                     await this.queryUsage(true);
@@ -79,8 +82,8 @@ export class AutoRefreshManager implements vscode.Disposable {
 
     private showResetNotification(types: string[]): void {
         const names = types
-            .map(t => t === QUOTA_TYPE_5H ? vscode.l10n.t('5 Hour Quota') : t === QUOTA_TYPE_WEEKLY ? vscode.l10n.t('Weekly Quota') : t)
-            .filter(n => n);
+            .map(t => t === QUOTA_TYPE_5H ? vscode.l10n.t('5 Hour Quota') : t === QUOTA_TYPE_WEEKLY ? vscode.l10n.t('Weekly Quota') : null)
+            .filter((n): n is string => n !== null);
         if (names.length === 0) { return; }
         const joined = names.join(', ');
         vscode.window.showInformationMessage(
