@@ -751,24 +751,6 @@ body {
       ? (loc.fiveHourDeltaLabel || '5h')
       : (loc.weeklyDeltaLabel || '周');
 
-    // Build gap background areas
-    var gapMarkAreas = [];
-    var inGap = false;
-    var gapStart = -1;
-    for (var gi = 0; gi < data.length; gi++) {
-      if (data[gi].fiveHourPct === null) {
-        if (!inGap) { inGap = true; gapStart = gi; }
-      } else {
-        if (inGap) {
-          gapMarkAreas.push([{ xAxis: gapStart }, { xAxis: gi - 1 }]);
-          inGap = false;
-        }
-      }
-    }
-    if (inGap) {
-      gapMarkAreas.push([{ xAxis: gapStart }, { xAxis: data.length - 1 }]);
-    }
-
     quotaChart.setOption({
       grid: { top: 20, right: 8, bottom: 32, left: 8 },
       xAxis: {
@@ -786,11 +768,7 @@ body {
       series: [{
         name: seriesName, type: 'bar', data: seriesData,
         itemStyle: { color: seriesColor, borderRadius: [3, 3, 0, 0] },
-        barMaxWidth: barWidth,
-        markArea: gapMarkAreas.length > 0 ? {
-          silent: true, data: gapMarkAreas,
-          itemStyle: { color: 'rgba(128,128,128,0.08)' }
-        } : undefined
+        barMaxWidth: barWidth
       }],
       tooltip: {
         trigger: 'axis', textStyle: { fontSize: 10 },
