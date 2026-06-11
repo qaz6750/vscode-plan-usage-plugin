@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { UsageResponse } from './types';
+import { UsageResponse, QuotaLimitData } from './types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from './constants';
 
 const WARNED_RESET_TIMES_KEY = 'glmPlanUsage.warnedResetTimes';
@@ -17,38 +17,71 @@ export class QuotaWarningChecker {
     }
 
     async check(response: UsageResponse): Promise<void> {
+        // 非聚焦窗口不处理警告——各窗口独立轮询，无需延迟等聚焦窗口
+        if (!vscode.window.state.focused) {
+            return;
+        }
+
         const now = Date.now();
         const warnedResetTimes = this.getWarnedResetTimes();
 
+        // 清理过期条目
+        let cleaned = false;
         for (const resetTime of warnedResetTimes) {
             if (resetTime < now) {
                 warnedResetTimes.delete(resetTime);
+                cleaned = true;
             }
         }
+        if (cleaned) {
+            await this.saveWarnedResetTimes(warnedResetTimes);
+        }
 
-        let hasNewWarning = false;
+        // 检查并通知
         for (const item of response.quotaLimits) {
             if (item.percentage >= 90 && item.nextResetTime && !warnedResetTimes.has(item.nextResetTime)) {
-                warnedResetTimes.add(item.nextResetTime);
-                hasNewWarning = true;
-                if (item.type === QUOTA_TYPE_5H) {
-                    vscode.window.showWarningMessage(
-                        vscode.l10n.t('GLM Plan 5-hour quota warning: {0}% used', item.percentage.toFixed(1))
-                    );
-                } else if (item.type === QUOTA_TYPE_WEEKLY) {
-                    vscode.window.showWarningMessage(
-                        vscode.l10n.t('GLM Plan weekly quota warning: {0}% used', item.percentage.toFixed(1))
-                    );
-                } else {
-                    vscode.window.showWarningMessage(
-                        vscode.l10n.t('GLM Plan quota warning: {0} has reached {1}%', item.type, item.percentage.toFixed(1))
-                    );
-                }
+                await this.showWarning(item);
             }
         }
+    }
 
-        if (hasNewWarning || Array.from(warnedResetTimes).length !== this.globalState.get<number[]>(WARNED_RESET_TIMES_KEY, []).length) {
-            await this.saveWarnedResetTimes(warnedResetTimes);
+    private async showWarning(item: QuotaLimitData): Promise<void> {
+        const resetTime = item.nextResetTime!;
+
+        // 双重检查：可能在本轮其他警告处理中已被标记
+        if (this.getWarnedResetTimes().has(resetTime)) {
+            return;
+        }
+
+        await this.markResetTimeWarned(resetTime);
+        this.displayWarning(item);
+    }
+
+    private async markResetTimeWarned(resetTime: number): Promise<void> {
+        const warnedSet = this.getWarnedResetTimes();
+        const now = Date.now();
+        for (const t of warnedSet) {
+            if (t < now) {
+                warnedSet.delete(t);
+            }
+        }
+        warnedSet.add(resetTime);
+        await this.saveWarnedResetTimes(warnedSet);
+    }
+
+    private displayWarning(item: QuotaLimitData): void {
+        if (item.type === QUOTA_TYPE_5H) {
+            vscode.window.showWarningMessage(
+                vscode.l10n.t('GLM Plan 5-hour quota warning: {0}% used', item.percentage.toFixed(1))
+            );
+        } else if (item.type === QUOTA_TYPE_WEEKLY) {
+            vscode.window.showWarningMessage(
+                vscode.l10n.t('GLM Plan weekly quota warning: {0}% used', item.percentage.toFixed(1))
+            );
+        } else {
+            vscode.window.showWarningMessage(
+                vscode.l10n.t('GLM Plan quota warning: {0} has reached {1}%', item.type, item.percentage.toFixed(1))
+            );
         }
     }
 }
