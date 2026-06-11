@@ -106,15 +106,19 @@ export class QuotaHistoryTracker {
                     const raw5hDelta = snap.fiveHourPct - prevSnap.fiveHourPct;
                     const rawWDelta = snap.weeklyPct - prevSnap.weeklyPct;
 
-                    // 重置检测：5h 百分点骤降 > 50 或从高位掉到低位
-                    if (
-                        raw5hDelta < -50 ||
-                        (prevSnap.fiveHourPct > 80 && snap.fiveHourPct < 10)
-                    ) {
+                    // 配额百分比只增不减（只有消耗没有释放），减小即重置
+                    // 重置时增量 = 当前用量（新周期已消耗量），不与上一小时相减
+                    if (raw5hDelta < 0) {
                         isReset = true;
-                        // 重置时 delta 置 null（无法计算有效消耗）
+                        fiveHourDelta = snap.fiveHourPct;
                     } else {
                         fiveHourDelta = raw5hDelta;
+                    }
+
+                    if (rawWDelta < 0) {
+                        isReset = true;
+                        weeklyDelta = snap.weeklyPct;
+                    } else {
                         weeklyDelta = rawWDelta;
                     }
                 }
@@ -212,7 +216,9 @@ export class QuotaHistoryTracker {
                     ? prevSnaps[prevSnaps.length - 1]
                     : null;
                 if (prevLast) {
-                    weeklyDelta = lastSnap.weeklyPct - prevLast.weeklyPct;
+                    const rawDelta = lastSnap.weeklyPct - prevLast.weeklyPct;
+                    // 配额百分比减小即重置，重置时增量 = 当前用量
+                    weeklyDelta = rawDelta < 0 ? lastSnap.weeklyPct : rawDelta;
                 }
             }
 
