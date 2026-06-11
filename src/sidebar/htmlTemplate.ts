@@ -424,7 +424,7 @@ body {
       var series = [];
       var legend = { show: false };
 
-      if (data.models && data.models.length > 0) {
+      if (data.models && data.models.length > 1) {
         legend = {
           show: true,
           top: 0,
@@ -475,7 +475,7 @@ body {
       }
 
       todayChart.setOption({
-        grid: { top: data.models && data.models.length > 0 ? 24 : 12, right: 8, bottom: 32, left: 42 },
+        grid: { top: data.models && data.models.length > 1 ? 24 : 12, right: 8, bottom: 32, left: 42 },
         legend: legend,
         xAxis: {
           type: 'category',
@@ -572,7 +572,7 @@ body {
     var series = [];
     var legend = { show: false };
     
-    if (data.models && data.models.length > 0) {
+    if (data.models && data.models.length > 1) {
       legend = {
         show: true,
         top: 0,
@@ -627,7 +627,7 @@ body {
     var tooltipLabels = data.dates;
 
     weekChart.setOption({
-      grid: { top: data.models && data.models.length > 0 ? 24 : 8, right: 8, bottom: 32, left: 42 },
+      grid: { top: data.models && data.models.length > 1 ? 24 : 8, right: 8, bottom: 32, left: 42 },
       legend: legend,
       xAxis: {
         type: 'category',
