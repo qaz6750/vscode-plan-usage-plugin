@@ -110,7 +110,8 @@ export async function activate(context: vscode.ExtensionContext) {
         statusBarManager,
         cache,
         quotaWarningChecker,
-        queryUsage
+        queryUsage,
+        context.globalState
     );
 
     ConfigManager.initialize(context.secrets);
