@@ -800,13 +800,13 @@ body {
   }
 
   function renderWeeklyChart(data, c) {
-    const xData = data.map(function(d) { return d.date; });
+    const xData = data.map(function(d) { return d.date + '\\n' + (loc[d.weekday] || d.weekday); });
     const seriesData = data.map(function(d) { return d.weeklyDelta; });
     const seriesColor = '#89D185';
     const seriesName = loc.dailyDeltaLabel || 'Weekly Δ/d';
 
     quotaChart.setOption({
-      grid: { top: 20, right: 8, bottom: 32, left: 8 },
+      grid: { top: 20, right: 8, bottom: 40, left: 8 },
       xAxis: {
         type: 'category', data: xData, boundaryGap: true,
         axisLabel: { fontSize: 9, color: c.text, interval: 0 },
