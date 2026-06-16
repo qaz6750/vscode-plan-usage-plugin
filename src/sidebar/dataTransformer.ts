@@ -118,6 +118,8 @@ export interface SidebarLocales {
     Thu: string;
     Fri: string;
     Sat: string;
+    barChart: string;
+    lineChart: string;
 }
 
 export interface SidebarData {
@@ -338,6 +340,8 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
             Thu: vscode.l10n.t('Thu'),
             Fri: vscode.l10n.t('Fri'),
             Sat: vscode.l10n.t('Sat'),
+            barChart: vscode.l10n.t('Bar'),
+            lineChart: vscode.l10n.t('Line'),
         },
         quotas,
         today,

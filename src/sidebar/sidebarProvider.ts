@@ -56,6 +56,8 @@ localResourceRoots: [
                     this._context.globalState.update('glmPlanUsage.quotaRateMetric', msg.value);
                 } else if (msg.command === 'saveQuotaRateDayRange') {
                     this._context.globalState.update('glmPlanUsage.quotaRateDayRange', msg.value);
+                } else if (msg.command === 'saveTodayChartType') {
+                    this._context.globalState.update('glmPlanUsage.todayChartType', msg.value);
                 } else if (msg.command === 'openSettings') {
                     vscode.commands.executeCommand('workbench.action.openSettings', 'glmPlanUsage');
                 } else if (msg.command === 'setToken') {
@@ -109,7 +111,8 @@ localResourceRoots: [
         const dayRange = this._context.globalState.get<string>('glmPlanUsage.dayRange', '7');
         const quotaRateMetric = this._context.globalState.get<string>('glmPlanUsage.quotaRateMetric', '5h');
         const quotaRateDayRange = this._context.globalState.get<string>('glmPlanUsage.quotaRateDayRange', 'today');
-        this._view?.webview.postMessage({ command: 'updateData', data, dayRange, quotaRateMetric, quotaRateDayRange });
+        const todayChartType = this._context.globalState.get<string>('glmPlanUsage.todayChartType', 'bar');
+        this._view?.webview.postMessage({ command: 'updateData', data, dayRange, quotaRateMetric, quotaRateDayRange, todayChartType });
     }
 
     private disposeView(): void {

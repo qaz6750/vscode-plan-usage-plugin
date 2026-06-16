@@ -292,9 +292,15 @@ body {
   <div class="section-title">
     <div class="section-title-row">
       <span id="today-section-title"></span>
-      <span class="radio-link-group" id="today-metric-select">
-        <span id="today-metric-tokens" class="radio-link active" data-value="tokens">Tokens</span>
-        <span id="today-metric-calls" class="radio-link" data-value="calls">Calls</span>
+      <span class="section-title-actions">
+        <span class="radio-link-group" id="today-chart-type-select">
+          <span id="today-chart-bar" class="radio-link active" data-value="bar">Bar</span>
+          <span id="today-chart-line" class="radio-link" data-value="line">Line</span>
+        </span>
+        <span class="radio-link-group" id="today-metric-select">
+          <span id="today-metric-tokens" class="radio-link active" data-value="tokens">Tokens</span>
+          <span id="today-metric-calls" class="radio-link" data-value="calls">Calls</span>
+        </span>
       </span>
     </div>
     <div class="section-stats-row">
@@ -349,6 +355,7 @@ body {
   let storedData = null;
   let currentRange = '7';
   let currentMetric = 'tokens';
+let currentChartType = 'bar';
   let currentQuotaRate = '5h';
   let currentQuotaDayRange = 'today';
   let quotaData = [];
@@ -378,17 +385,42 @@ body {
   }
 
   function modelColors() {
-    return ['#f38441', '#b86fe5', '#00c9a7', '#ff6b6b', '#4ecdc4', '#ffd93d', '#6c5ce7', '#a8e6cf'];
+    return ['#f38441', '#b86fe5', '#00c9a7', '#ff6b6b', '#4ecdc4', '#ffd93d', '#6c5ce7', '#a8e6cf', '#45b7d1', '#f78fb3', '#3dc1d3', '#e15f41', '#786fa6', '#f5cd79', '#546de5', '#c44569'];
   }
 
-  function initTodayChart(data, metric) {
+  var KNOWN_MODEL_COLORS = {
+    'GLM-5.2': '#5985f5',
+    'GLM-5.1': '#4ecdc4',
+    'GLM-5-Turbo': '#f38441',
+    'GLM-5V-Turbo': '#b86fe5',
+    'GLM4.7': '#00c9a7',
+    'GLM-4.6V': '#ff6b6b',
+    'GLM-4.5-Air': '#ffd93d'
+  };
+
+  var TOTAL_COLOR = '#6366f1';
+
+  function getModelColor(model, usedColors) {
+    if (KNOWN_MODEL_COLORS.hasOwnProperty(model)) {
+      return KNOWN_MODEL_COLORS[model];
+    }
+    var palette = modelColors();
+    for (var i = 0; i < palette.length; i++) {
+      if (usedColors.indexOf(palette[i]) === -1) {
+        return palette[i];
+      }
+    }
+    return palette[palette.length - 1];
+  }
+
+  function initTodayChart(data, metric, chartType) {
     try {
       const dom = document.getElementById('today-chart');
       if (!dom) return;
       if (todayChart) todayChart.dispose();
       todayChart = echarts.init(dom);
       const c = chartColors();
-      const colors = modelColors();
+      var usedColors = [];
 
       const xData = data.xTime.map(function(t) {
         const parts = t.split(' ');
@@ -404,25 +436,99 @@ body {
       }
       var slicedX = xData.slice(startIdx);
       var slicedY = yData.slice(startIdx);
+
+      // Pad x-axis to at least 6 labels when data is sparse
+      var MIN_X_LABELS = 7;
+      if (slicedX.length > 0 && slicedX.length < MIN_X_LABELS) {
+        var padHours = [];
+        for (var pi = 0; pi < slicedX.length; pi++) {
+          padHours.push(parseInt(slicedX[pi], 10));
+        }
+        var padMin = Math.min.apply(null, padHours);
+        var padMax = Math.max.apply(null, padHours);
+        var padRange = padMax - padMin + 1;
+        var padTotal = Math.max(MIN_X_LABELS, padRange);
+        var padBefore = Math.floor((padTotal - padRange) / 2);
+        var padAfter = padTotal - padRange - padBefore;
+        var padStart = padMin - padBefore;
+        var padEnd = padMax + padAfter;
+        if (padStart < 0) { padEnd += (0 - padStart); padStart = 0; }
+        if (padEnd > 23) { padStart -= (padEnd - 23); padEnd = 23; if (padStart < 0) padStart = 0; }
+
+        var origLookup = {};
+        for (var oi = 0; oi < slicedX.length; oi++) {
+          origLookup[slicedX[oi]] = oi;
+        }
+
+        var newX = [], newY = [];
+        for (var h = padStart; h <= padEnd; h++) {
+          var lbl = (h < 10 ? '0' : '') + h + ':00';
+          newX.push(lbl);
+          var oi2 = origLookup[lbl];
+          newY.push(oi2 !== undefined ? slicedY[oi2] : '-');
+        }
+        slicedX = newX;
+        slicedY = newY;
+      }
+
       var slicedModels = [];
-      
-      // Save full data for dual-metric tooltip (closure)
-      var _totalTokens = data.yValue.slice(startIdx);
-      var _totalCalls = (data.callCount || []).slice(startIdx);
+
+      // Map padded slicedX labels back to original xData indices
+      var paddedOrigIdx = {};
+      for (var pi2 = 0; pi2 < slicedX.length; pi2++) {
+        var lbl2 = slicedX[pi2];
+        var found = -1;
+        for (var xi = startIdx; xi < xData.length; xi++) {
+          if (xData[xi] === lbl2) { found = xi; break; }
+        }
+        paddedOrigIdx[pi2] = found; // -1 if padded gap
+      }
+
+      // Save full data for dual-metric tooltip (closure) — padded
+      var allTokens = data.yValue;
+      var allCalls = data.callCount || [];
+      var _totalTokens = [];
+      var _totalCalls = [];
+      for (var ti = 0; ti < slicedX.length; ti++) {
+        var oi3 = paddedOrigIdx[ti];
+        _totalTokens.push(oi3 >= 0 ? allTokens[oi3] : null);
+        _totalCalls.push(oi3 >= 0 ? allCalls[oi3] : null);
+      }
       var _modelMap = {};
       if (data.models) {
         for (var mi = 0; mi < data.models.length; mi++) {
           var md = data.models[mi];
-          var mTokens = md.yValue.slice(startIdx);
-          var mCalls = (md.callCount || []).slice(startIdx);
-          _modelMap[md.model] = { tokens: mTokens, calls: mCalls };
-          var mData = metric === 'calls' ? mCalls : mTokens;
-          slicedModels.push({ model: md.model, yValue: mData.map(function(v) { return v === null ? '-' : v; }) });
+          var mTokens = [];
+          var mCalls = (md.callCount || []);
+          var mData = [];
+          for (var ti2 = 0; ti2 < slicedX.length; ti2++) {
+            var oi4 = paddedOrigIdx[ti2];
+            if (oi4 >= 0) {
+              mTokens.push(md.yValue[oi4]);
+              var cv = metric === 'calls' ? mCalls[oi4] : md.yValue[oi4];
+              mData.push(cv === null ? '-' : cv);
+            } else {
+              mTokens.push(null);
+              mData.push('-');
+            }
+          }
+          _modelMap[md.model] = { tokens: mTokens, calls: (function() {
+            var pc = [];
+            for (var ti3 = 0; ti3 < slicedX.length; ti3++) {
+              var oi5 = paddedOrigIdx[ti3];
+              pc.push(oi5 >= 0 ? (md.callCount || [])[oi5] : null);
+            }
+            return pc;
+          })() };
+          slicedModels.push({ model: md.model, yValue: mData });
         }
       }
 
       var series = [];
       var legend = { show: false };
+      chartType = chartType || 'bar';
+      var isLine = chartType === 'line';
+      var isBar = chartType === 'bar';
 
       if (data.models && data.models.length > 1) {
         legend = {
@@ -436,42 +542,58 @@ body {
           pageTextStyle: { color: c.text }
         };
 
-        series.push({
-          name: loc.total || 'Total',
-          type: 'line',
-          data: slicedY,
-          smooth: true,
-          symbol: 'none',
-          lineStyle: { width: 2, color: '#5985f5', type: 'solid' },
-          itemStyle: { color: '#5985f5' },
-          areaStyle: { color: 'rgba(89,133,245,0.15)' },
-          connectNulls: false
-        });
+        if (isLine) {
+          var totalSeries = {
+            name: loc.total || 'Total',
+            type: 'line',
+            data: slicedY,
+            itemStyle: { color: TOTAL_COLOR },
+            connectNulls: false,
+            smooth: true,
+            symbol: 'none',
+            lineStyle: { width: 2, color: TOTAL_COLOR, type: 'solid' },
+            areaStyle: { color: 'rgba(99,102,241,0.15)' }
+          };
+          series.push(totalSeries);
+        }
 
         for (var i = 0; i < slicedModels.length; i++) {
           var m = slicedModels[i];
-          series.push({
+          var mc = getModelColor(m.model, usedColors);
+          usedColors.push(mc);
+          var modelSeries = {
             name: m.model,
-            type: 'line',
+            type: chartType,
             data: m.yValue,
-            smooth: true,
-            symbol: 'none',
-            lineStyle: { width: 1.5, color: colors[i % colors.length] },
-            itemStyle: { color: colors[i % colors.length] },
+            itemStyle: { color: mc },
             connectNulls: false
-          });
+          };
+          if (isLine) {
+            modelSeries.smooth = true;
+            modelSeries.symbol = 'none';
+            modelSeries.lineStyle = { width: 1.5, color: mc };
+          } else if (isBar) {
+            modelSeries.stack = 'total';
+          }
+          series.push(modelSeries);
         }
       } else {
-        series.push({
+        var singleSeries = {
           name: metric === 'calls' ? (loc.calls || 'Calls') : (loc.tooltipTokens || 'Tokens'),
-          type: 'line',
+          type: chartType,
           data: slicedY,
-          smooth: true,
-          symbol: 'none',
-          lineStyle: { width: 1.5, color: c.accent },
-          areaStyle: { color: c.area },
           connectNulls: false
-        });
+        };
+        if (isLine) {
+          singleSeries.smooth = true;
+          singleSeries.symbol = 'none';
+          singleSeries.lineStyle = { width: 1.5, color: c.accent };
+          singleSeries.areaStyle = { color: c.area };
+        } else if (isBar) {
+          singleSeries.itemStyle = { color: c.accent };
+          singleSeries.barWidth = '50%';
+        }
+        series.push(singleSeries);
       }
 
       todayChart.setOption({
@@ -480,7 +602,7 @@ body {
         xAxis: {
           type: 'category',
           data: slicedX,
-          boundaryGap: false,
+          boundaryGap: isBar,
           axisLabel: { fontSize: 9, color: c.text, interval: 0, rotate: 45 },
           axisLine: { lineStyle: { color: c.grid } },
           axisTick: { show: false }
@@ -551,7 +673,7 @@ body {
     if (weekChart) weekChart.dispose();
     weekChart = echarts.init(dom);
     const c = chartColors();
-    const colors = modelColors();
+    var usedColors = [];
 
     metric = metric || 'tokens';
     var mainTokens = data.tokens;
@@ -590,23 +712,25 @@ body {
         data: mainData,
         smooth: true,
         symbol: 'none',
-        lineStyle: { width: 2, color: '#5985f5', type: 'solid' },
-        itemStyle: { color: '#5985f5' },
-        areaStyle: { color: 'rgba(89,133,245,0.15)' },
+        lineStyle: { width: 2, color: TOTAL_COLOR, type: 'solid' },
+        itemStyle: { color: TOTAL_COLOR },
+        areaStyle: { color: 'rgba(99,102,241,0.15)' },
         connectNulls: false
       });
       
       for (var i = 0; i < data.models.length; i++) {
         var m = data.models[i];
         var mData = metric === 'calls' ? (m.calls || []) : m.tokens;
+        var mc = getModelColor(m.model, usedColors);
+        usedColors.push(mc);
         series.push({
           name: m.model,
           type: 'line',
           data: mData,
           smooth: true,
           symbol: 'none',
-          lineStyle: { width: 1.5, color: colors[i % colors.length] },
-          itemStyle: { color: colors[i % colors.length] },
+          lineStyle: { width: 1.5, color: mc },
+          itemStyle: { color: mc },
           connectNulls: false
         });
       }
@@ -908,7 +1032,12 @@ body {
     var weekCallsBtn = document.getElementById('week-metric-calls');
     if (weekTokensBtn) weekTokensBtn.textContent = loc.tokens || 'Tokens';
     if (weekCallsBtn) weekCallsBtn.textContent = loc.calls || 'Calls';
+    var barBtn = document.getElementById('today-chart-bar');
+    var lineBtn = document.getElementById('today-chart-line');
+    if (barBtn) barBtn.textContent = loc.barChart || 'Bar';
+    if (lineBtn) lineBtn.textContent = loc.lineChart || 'Line';
     syncMetricToggleUI();
+    syncTodayChartTypeUI();
 
     updateQuotas(data.quotas);
 
@@ -930,7 +1059,7 @@ body {
       document.getElementById('today-calls-label').textContent = loc.calls || 'Calls';
       document.getElementById('today-tokens').textContent = data.today.totalTokens;
       document.getElementById('today-calls').textContent = data.today.totalCalls;
-      initTodayChart(data.today, currentMetric);
+      initTodayChart(data.today, currentMetric, currentChartType);
     } else {
       todaySection.style.display = 'none';
     }
@@ -981,10 +1110,32 @@ body {
     syncMetricToggleUI();
     // Re-render today chart if data available
     if (storedData && storedData.today) {
-      initTodayChart(storedData.today, currentMetric);
+      initTodayChart(storedData.today, currentMetric, currentChartType);
     }
     // Re-render week chart if data available
     renderDailyChart();
+  }
+
+  function syncTodayChartTypeUI() {
+    var allLinks = document.querySelectorAll('#today-chart-type-select .radio-link');
+    for (var i = 0; i < allLinks.length; i++) {
+      var link = allLinks[i];
+      if (link.dataset.value === currentChartType) {
+        link.classList.add('active');
+      } else {
+        link.classList.remove('active');
+      }
+    }
+  }
+
+  function onTodayChartTypeToggle(chartType) {
+    if (chartType === currentChartType) return;
+    currentChartType = chartType;
+    syncTodayChartTypeUI();
+    vscodeApi.postMessage({ command: 'saveTodayChartType', value: chartType });
+    if (storedData && storedData.today) {
+      initTodayChart(storedData.today, currentMetric, currentChartType);
+    }
   }
 
   // Metric toggle click handler (event delegation on both toggle groups)
@@ -999,6 +1150,17 @@ body {
   }
   addMetricToggleHandler('today-metric-select');
   addMetricToggleHandler('week-metric-select');
+
+  function addTodayChartTypeToggleHandler() {
+    var el = document.getElementById('today-chart-type-select');
+    if (!el) return;
+    el.addEventListener('click', function(e) {
+      var btn = e.target.closest('.radio-link');
+      if (!btn) return;
+      onTodayChartTypeToggle(btn.dataset.value);
+    });
+  }
+  addTodayChartTypeToggleHandler();
 
   function syncQuotaRateToggleUI() {
     var allLinks = document.querySelectorAll('#quota-rate-metric-select .radio-link');
@@ -1104,6 +1266,9 @@ body {
       }
       if (msg.quotaRateDayRange) {
         currentQuotaDayRange = msg.quotaRateDayRange;
+      }
+      if (msg.todayChartType) {
+        currentChartType = msg.todayChartType;
       }
       updateUI(msg.data);
     } else if (msg && msg.command === 'showError') {
