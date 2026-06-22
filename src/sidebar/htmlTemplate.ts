@@ -513,7 +513,19 @@ let currentChartType = 'bar';
       var isLine = chartType === 'line';
       var isBar = chartType === 'bar';
 
+      // 检查当前 metric 下模型数据是否有效。
+      // API 不提供 per-model callCount 时，calls 指标下 slicedModels 的 yValue 会全为空，
+      // 此时降级走单 series 分支（用汇总数据 slicedY），保证 bar 模式也能显示数据。
+      var hasValidModelData = false;
       if (data.models && data.models.length > 1) {
+        hasValidModelData = slicedModels.some(function(sm) {
+          return sm.yValue.some(function(v) {
+            return v !== '-' && v !== null && v !== undefined && v > 0;
+          });
+        });
+      }
+
+      if (hasValidModelData) {
         legend = {
           show: true,
           top: 0,
@@ -580,7 +592,7 @@ let currentChartType = 'bar';
       }
 
       todayChart.setOption({
-        grid: { top: data.models && data.models.length > 1 ? 24 : 12, right: 8, bottom: 32, left: 42 },
+        grid: { top: hasValidModelData ? 24 : 12, right: 8, bottom: 32, left: 42 },
         legend: legend,
         xAxis: {
           type: 'category',
@@ -600,45 +612,57 @@ let currentChartType = 'bar';
         trigger: 'axis',
         textStyle: { fontSize: 10 },
         formatter: function(params) {
-          if (!params || params.length === 0) return '';
-          var result = params[0].axisValue;
+            if (!params || params.length === 0) return '';
+            var result = params[0].axisValue;
             var hasData = false;
             for (var i = 0; i < params.length; i++) {
               var p = params[i];
               var idx = p.dataIndex;
               var tokenVal, callVal;
-              if (p.seriesName === (loc.total || 'Total')) {
+              var isTotal = p.seriesName === (loc.total || 'Total');
+              var mm = _modelMap[p.seriesName];
+              // 单 series 分支：seriesName 既不是 'Total' 也不在 _modelMap 中
+              // （如无模型、单模型、或 calls 指标下 per-model 数据无效的 fall back）
+              var isSingle = !isTotal && !mm;
+              if (isTotal || isSingle) {
+                // Total 和单 series 都用汇总数据
                 tokenVal = _totalTokens[idx];
                 callVal = _totalCalls[idx];
               } else {
-                var mm = _modelMap[p.seriesName];
-                if (mm) {
-                  tokenVal = mm.tokens ? mm.tokens[idx] : null;
-                  callVal = mm.calls ? mm.calls[idx] : null;
-                }
+                tokenVal = mm.tokens ? mm.tokens[idx] : null;
+                callVal = mm.calls ? mm.calls[idx] : null;
               }
               if (tokenVal === null && callVal === null) continue;
               if ((tokenVal === null || tokenVal === '-' || tokenVal === undefined || tokenVal === 0) &&
                   (callVal === null || callVal === '-' || callVal === undefined || callVal === 0)) continue;
               
               hasData = true;
-              var isTotal = p.seriesName === (loc.total || 'Total');
               result += '<br/>' + p.marker + p.seriesName + ': ';
-              // Token value
-              if (tokenVal !== null && tokenVal !== '-' && tokenVal !== undefined) {
-                result += (tokenVal >= 1000000 ? (tokenVal/1000000).toFixed(1)+'M' : tokenVal >= 1000 ? (tokenVal/1000).toFixed(1)+'K' : tokenVal);
+              if (isSingle) {
+                // 单 series：根据当前 metric 显示对应字段，与 seriesName (Calls/Tokens) 语义一致
+                if (metric === 'calls') {
+                  result += (callVal !== null && callVal !== '-' && callVal !== undefined) ? callVal : '--';
+                } else {
+                  result += (tokenVal !== null && tokenVal !== '-' && tokenVal !== undefined)
+                    ? (tokenVal >= 1000000 ? (tokenVal/1000000).toFixed(1)+'M' : tokenVal >= 1000 ? (tokenVal/1000).toFixed(1)+'K' : tokenVal)
+                    : '--';
+                }
               } else {
-                result += '--';
-              }
-              // Call value — only for Total
-              if (isTotal) {
-                result += ', ';
-                if (callVal !== null && callVal !== '-' && callVal !== undefined) {
-                  result += callVal;
+                // Total 或模型 series：显示 token，Total 再附加 call
+                if (tokenVal !== null && tokenVal !== '-' && tokenVal !== undefined) {
+                  result += (tokenVal >= 1000000 ? (tokenVal/1000000).toFixed(1)+'M' : tokenVal >= 1000 ? (tokenVal/1000).toFixed(1)+'K' : tokenVal);
                 } else {
                   result += '--';
                 }
-                result += ' ' + (loc.calls || 'Calls');
+                if (isTotal) {
+                  result += ', ';
+                  if (callVal !== null && callVal !== '-' && callVal !== undefined) {
+                    result += callVal;
+                  } else {
+                    result += '--';
+                  }
+                  result += ' ' + (loc.calls || 'Calls');
+                }
               }
             }
             return hasData ? result : '';
