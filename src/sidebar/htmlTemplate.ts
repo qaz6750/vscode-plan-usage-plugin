@@ -977,7 +977,7 @@ let currentChartType = 'bar';
     const quotaLabel = loc.ofWeeklyQuota || 'of weekly quota';
 
     quotaChart.setOption({
-      grid: { top: 20, right: 8, bottom: 40, left: 8 },
+      grid: { top: 20, right: 36, bottom: 40, left: 8 },
       xAxis: {
         type: 'category', data: xData, boundaryGap: true,
         axisLabel: { fontSize: 9, color: c.text, interval: 0 },
@@ -986,7 +986,8 @@ let currentChartType = 'bar';
       },
       yAxis: {
         type: 'value',
-        axisLabel: { fontSize: 9, color: c.text, formatter: function(v) { return v + '%'; } },
+        position: 'right',
+        axisLabel: { fontSize: 9, color: seriesColor, formatter: function(v) { return v + '%'; } },
         splitLine: { lineStyle: { color: c.grid } },
         min: 0
       },
