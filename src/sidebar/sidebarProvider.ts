@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { UsageResponse } from '../types';
+import { UsageResponse, HourlyQuotaStats, DailyQuotaStats } from '../types';
 import { transformResponse, SidebarData } from './dataTransformer';
 import { getHtmlTemplate } from './htmlTemplate';
 import { ConfigManager } from '../config';
@@ -7,6 +7,8 @@ import { ConfigManager } from '../config';
 export class SidebarProvider implements vscode.WebviewViewProvider {
     private _view?: vscode.WebviewView;
     private _pendingData?: UsageResponse;
+    private _pendingHourlyStats?: HourlyQuotaStats[];
+    private _pendingWeeklyStats?: DailyQuotaStats[];
     private _pendingError?: string;
     private _refreshCallback?: () => Promise<void>;
     private _disposables: vscode.Disposable[] = [];
@@ -78,15 +80,17 @@ localResourceRoots: [
         if (this._pendingError) {
             this._view.webview.postMessage({ command: 'showError', error: this._pendingError });
         } else if (this._pendingData) {
-            this.postUpdate(this._pendingData);
+            this.postUpdate(this._pendingData, this._pendingHourlyStats, this._pendingWeeklyStats);
         }
     }
 
-    update(response: UsageResponse): void {
+    update(response: UsageResponse, hourlyQuotaStats?: HourlyQuotaStats[], weeklyQuotaStats?: DailyQuotaStats[]): void {
         this._pendingData = response;
+        this._pendingHourlyStats = hourlyQuotaStats;
+        this._pendingWeeklyStats = weeklyQuotaStats;
         this._pendingError = undefined;
         if (this._view && this._view.visible) {
-            this.postUpdate(response);
+            this.postUpdate(response, hourlyQuotaStats, weeklyQuotaStats);
         }
     }
 
@@ -98,9 +102,9 @@ localResourceRoots: [
         }
     }
 
-    private postUpdate(response: UsageResponse): void {
+    private postUpdate(response: UsageResponse, hourlyQuotaStats?: HourlyQuotaStats[], weeklyQuotaStats?: DailyQuotaStats[]): void {
         const showQuotaRate = ConfigManager.isShowQuotaRateEnabled();
-        const data: SidebarData = transformResponse(response);
+        const data: SidebarData = transformResponse(response, hourlyQuotaStats, weeklyQuotaStats);
         if (!showQuotaRate) {
             // 用户关闭了配额消耗图表：清空数据，前端会隐藏该区块
             data.quotaRate = { hourly: [], daily: [], level: data.level };
