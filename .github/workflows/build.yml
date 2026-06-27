@@ -17,7 +17,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ['18.x', '20.x']
+        # @vscode/vsce 依赖 undici@7，要求 node >=20.18.1，故不再测试 Node 18
+        node: ['20.x']
     steps:
       - uses: actions/checkout@v4
 
