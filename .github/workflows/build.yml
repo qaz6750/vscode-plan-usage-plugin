@@ -44,7 +44,14 @@ jobs:
         # 强制使用官方打包器，输出到 release 目录
         # 注：--allow-duplicate-tag 仅用于 publish，package 不支持该选项
         # 注：--out 路径末尾不能带斜杠，否则 vsce 把它当文件 stat 报 ENOTDIR
-        run: npx --yes @vscode/vsce package --out ./release --no-git-tag-version
+        run: |
+          mkdir -p release
+          npx --yes @vscode/vsce package --out ./release --no-git-tag-version
+          # 兜底：无论 vsce 把文件输出到哪里，都归集到 release/
+          find . -maxdepth 2 -name '*.vsix' -not -path './release/*' -exec mv {} release/ \; || true
+          echo "::group::Generated VSIX"
+          ls -la release/
+          echo "::endgroup::"
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
@@ -79,7 +86,11 @@ jobs:
         run: npm run compile
 
       - name: Package VSIX
-        run: npx --yes @vscode/vsce package --out ./release --no-git-tag-version
+        run: |
+          mkdir -p release
+          npx --yes @vscode/vsce package --out ./release --no-git-tag-version
+          find . -maxdepth 2 -name '*.vsix' -not -path './release/*' -exec mv {} release/ \; || true
+          ls -la release/
 
       - name: Upload VSIX to GitHub Release
         uses: softprops/action-gh-release@v2
