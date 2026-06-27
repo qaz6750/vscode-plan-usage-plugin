@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { UsageResponse } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from '../constants';
+import { ConfigManager } from '../config';
 import { UserActivityState } from '../enums';
 import { formatRemainingTimeCompact, getCombinedColor } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate } from './usageEstimate';
@@ -20,10 +21,20 @@ export class StatusBarManager implements vscode.Disposable {
         );
 
         this.statusItem.command = 'glmPlanUsage.refresh';
-        this.statusItem.text = '$(sync~spin) GLM: --';
+        this.statusItem.text = `$(sync~spin) ${this.platformLabel()}: --`;
         this.statusItem.hide();
 
-        this.outputChannel = vscode.window.createOutputChannel('GLM Plan Usage');
+        this.outputChannel = vscode.window.createOutputChannel('Coding Plan Usage');
+    }
+
+    /** 当前激活平台的紧凑前缀（如 GLM / Kimi / Doubao）。 */
+    private platformLabel(): string {
+        return ConfigManager.getActivePlatform().descriptor.shortLabel;
+    }
+
+    /** 当前激活平台的完整展示名（用于标题）。 */
+    private platformTitle(): string {
+        return ConfigManager.getActivePlatform().descriptor.displayName;
     }
 
     show(): void {
@@ -43,7 +54,7 @@ export class StatusBarManager implements vscode.Disposable {
     private updateStatusBarAppearance(): void {
         if (this.userActivityState === UserActivityState.AFK) {
             this.statusItem.color = StatusBarManager.COLOR_AFK;
-            this.statusItem.text = 'GLM: AFK';
+            this.statusItem.text = `${this.platformLabel()}: AFK`;
             this.statusItem.tooltip = undefined;
         } else if (this.lastResponse) {
             this.updateUsage(this.lastResponse);
@@ -56,13 +67,14 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     setLoading(): void {
-        this.statusItem.text = '$(sync~spin) GLM: --';
+        this.statusItem.text = `$(sync~spin) ${this.platformLabel()}: --`;
         this.statusItem.tooltip = vscode.l10n.t('Querying...');
         this.show();
     }
 
     updateUsage(response: UsageResponse): void {
         this.lastResponse = response;
+        const label = this.platformLabel();
         const fiveHourLimit = response.quotaLimits.find(
             (limit) => limit.type === QUOTA_TYPE_5H
         );
@@ -76,15 +88,15 @@ export class StatusBarManager implements vscode.Disposable {
         if (fiveHourLimit !== undefined && weeklyLimit !== undefined) {
             const t5 = fiveHourLimit.nextResetTime ? formatRemainingTimeCompact(fiveHourLimit.nextResetTime) : '';
             const tw = weeklyLimit.nextResetTime ? formatRemainingTimeCompact(weeklyLimit.nextResetTime) : '';
-            this.statusItem.text = `GLM: ${fiveHourPct!.toFixed(0)}%${t5 ? ' ' + t5 : ''} | ${weeklyPct!.toFixed(0)}%${tw ? ' ' + tw : ''}`;
+            this.statusItem.text = `${label}: ${fiveHourPct!.toFixed(0)}%${t5 ? ' ' + t5 : ''} | ${weeklyPct!.toFixed(0)}%${tw ? ' ' + tw : ''}`;
         } else if (fiveHourLimit !== undefined) {
             const t5 = fiveHourLimit.nextResetTime ? formatRemainingTimeCompact(fiveHourLimit.nextResetTime) : '';
-            this.statusItem.text = `GLM: ${fiveHourPct!.toFixed(0)}%${t5 ? ' ' + t5 : ''}`;
+            this.statusItem.text = `${label}: ${fiveHourPct!.toFixed(0)}%${t5 ? ' ' + t5 : ''}`;
         } else if (weeklyLimit !== undefined) {
             const tw = weeklyLimit.nextResetTime ? formatRemainingTimeCompact(weeklyLimit.nextResetTime) : '';
-            this.statusItem.text = `GLM: ${weeklyPct!.toFixed(0)}%${tw ? ' ' + tw : ''}`;
+            this.statusItem.text = `${label}: ${weeklyPct!.toFixed(0)}%${tw ? ' ' + tw : ''}`;
         } else {
-            this.statusItem.text = 'GLM: N/A';
+            this.statusItem.text = `${label}: N/A`;
         }
 
         const fiveHourEstimate = fiveHourLimit ? calculate5HourEstimate(fiveHourLimit.percentage, fiveHourLimit.nextResetTime) : null;
@@ -99,10 +111,10 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     setError(message: string): void {
-        this.statusItem.text = '$(error) GLM';
+        this.statusItem.text = `$(error) ${this.platformLabel()}`;
         this.statusItem.color = '#F44747';
         const md = new vscode.MarkdownString();
-        md.appendMarkdown(`### $(error) ${vscode.l10n.t('Error')}\n\n`);
+        md.appendMarkdown(`### $(error) ${this.platformTitle()}\n\n`);
         md.appendMarkdown(`${message}\n\n`);
         md.appendMarkdown(`*${vscode.l10n.t('Click to retry')}*`);
         this.statusItem.tooltip = md;
@@ -110,10 +122,10 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     setNotConfigured(): void {
-        this.statusItem.text = '$(settings-gear) GLM';
+        this.statusItem.text = `$(settings-gear) ${this.platformLabel()}`;
         this.statusItem.color = undefined;
         const md = new vscode.MarkdownString();
-        md.appendMarkdown(`### $(settings-gear) GLM Plan Usage\n\n`);
+        md.appendMarkdown(`### $(settings-gear) ${this.platformTitle()}\n\n`);
         md.appendMarkdown(`${vscode.l10n.t('API Key not configured.')}\n\n`);
         md.appendMarkdown(`*${vscode.l10n.t('Click to configure')}*`);
         this.statusItem.tooltip = md;

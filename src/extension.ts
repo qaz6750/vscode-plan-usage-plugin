@@ -150,8 +150,9 @@ export async function activate(context: vscode.ExtensionContext) {
     const setTokenCommand = vscode.commands.registerCommand(
         'glmPlanUsage.setToken',
         async () => {
+            const platformName = ConfigManager.getActivePlatform().descriptor.displayName;
             const token = await vscode.window.showInputBox({
-                prompt: vscode.l10n.t('Enter your GLM API Key (encrypted via OS keychain)'),
+                prompt: vscode.l10n.t('Enter your {0} API Key (encrypted via OS keychain)', platformName),
                 password: true,
                 ignoreFocusOut: true
             });

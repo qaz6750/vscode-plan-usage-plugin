@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import { PlatformRegistry } from './platforms';
+import type { PlatformAdapter, UsageQueryConfig } from './platforms';
 
 export class ConfigManager {
     private static readonly CONFIG_SECTION = 'glmPlanUsage';
@@ -23,6 +25,35 @@ export class ConfigManager {
         const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
         const url = config.get<string>('baseUrl') || '';
         return url || '';
+    }
+
+    /**
+     * 读取设置项 glmPlanUsage.platform（默认 'auto'）。
+     * 'auto' 表示按 baseUrl 自动识别所属平台。
+     */
+    static getPlatformId(): string {
+        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
+        return config.get<string>('platform') || 'auto';
+    }
+
+    /**
+     * 解析当前激活的平台适配器：
+     *  1) 若 platform 显式指定且已注册 → 直接返回该适配器；
+     *  2) 否则 ('auto') 按 baseUrl 自动匹配；
+     *  3) 都未命中 → 回退到默认平台（GLM，保证向后兼容）。
+     */
+    static getActivePlatform(): PlatformAdapter {
+        const platformId = this.getPlatformId();
+        if (platformId && platformId !== 'auto') {
+            const adapter = PlatformRegistry.getById(platformId);
+            if (adapter) { return adapter; }
+        }
+        const baseUrl = this.getBaseUrl();
+        if (baseUrl) {
+            const adapter = PlatformRegistry.getByBaseUrl(baseUrl);
+            if (adapter) { return adapter; }
+        }
+        return PlatformRegistry.getDefault();
     }
 
     static getAutoRefresh(): boolean {
@@ -115,7 +146,7 @@ export class ConfigManager {
         if (!authToken) {
             return {
                 valid: false,
-                error: vscode.l10n.t('API Key is not configured. Please use "GLM Coding Plan Usage: Set API Key" command.')
+                error: vscode.l10n.t('API Key is not configured. Please use the "{0}: Set API Key" command.', this.getActivePlatform().descriptor.displayName)
             };
         }
 
@@ -126,12 +157,14 @@ export class ConfigManager {
             };
         }
 
-        if (!baseUrl.includes('api.z.ai') &&
-            !baseUrl.includes('open.bigmodel.cn') &&
-            !baseUrl.includes('dev.bigmodel.cn')) {
+        // 委派给当前激活平台适配器做平台特定校验
+        const adapter = this.getActivePlatform();
+        const config: UsageQueryConfig = { authToken, baseUrl };
+        const result = adapter.validateConfig(config);
+        if (!result.valid) {
             return {
                 valid: false,
-                error: vscode.l10n.t('Unsupported base URL. Supported: api.z.ai, open.bigmodel.cn, dev.bigmodel.cn')
+                error: result.error || vscode.l10n.t('Unsupported base URL for {0}.', adapter.descriptor.displayName)
             };
         }
 

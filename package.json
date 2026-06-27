@@ -12,7 +12,11 @@
     "plan",
     "usage",
     "bigmodel",
-    "zhipu"
+    "zhipu",
+    "kimi",
+    "moonshot",
+    "doubao",
+    "volcengine"
   ],
   "homepage": "https://github.com/sage-z-cn/vscode-glm-plan-usage-plugin#readme",
   "bugs": {
@@ -73,20 +77,27 @@
           "description": "%configuration.authToken.description%",
           "deprecationMessage": "%configuration.authToken.deprecated%"
         },
+        "glmPlanUsage.platform": {
+          "type": "string",
+          "default": "auto",
+          "enum": [
+            "auto",
+            "glm",
+            "kimi",
+            "doubao"
+          ],
+          "enumDescriptions": [
+            "%configuration.platform.enum.auto%",
+            "%configuration.platform.enum.glm%",
+            "%configuration.platform.enum.kimi%",
+            "%configuration.platform.enum.doubao%"
+          ],
+          "description": "%configuration.platform.description%"
+        },
         "glmPlanUsage.baseUrl": {
           "type": "string",
           "default": "https://open.bigmodel.cn/api/anthropic",
-          "enum": [
-            "https://open.bigmodel.cn/api/anthropic",
-            "https://dev.bigmodel.cn/api/anthropic",
-            "https://api.z.ai/api/anthropic"
-          ],
-          "enumDescriptions": [
-            "%configuration.baseUrl.enum.zhipu%",
-            "%configuration.baseUrl.enum.dev%",
-            "%configuration.baseUrl.enum.zai%"
-          ],
-          "description": "%configuration.baseUrl.description%"
+          "markdownDescription": "%configuration.baseUrl.description%"
         },
         "glmPlanUsage.autoRefresh": {
           "type": "boolean",
@@ -126,8 +137,8 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "lint": "eslint src --ext ts",
-    "package": "npm run compile && vsce package --out ./release/",
-    "publish": "npm run compile && npx @vscode/vsce publish",
+    "package": "npm run compile && npx --yes @vscode/vsce package --out ./release/",
+    "publish": "npm run compile && npx --yes @vscode/vsce publish",
     "build-and-install": "node scripts/build-and-install.js"
   },
   "devDependencies": {

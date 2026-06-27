@@ -1,4 +1,8 @@
-export type Platform = 'ZAI' | 'ZHIPU';
+/**
+ * 平台标识。放宽为字符串以支持任意平台适配器（'glm'、'kimi'、'doubao'…）。
+ * 该字段目前仅由适配器写入，用于内部标记，不参与显示逻辑。
+ */
+export type Platform = string;
 
 export interface UsageQueryConfig {
     authToken: string;

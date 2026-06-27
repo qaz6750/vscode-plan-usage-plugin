@@ -14,7 +14,7 @@
     {
       "label": "vsce: package",
       "type": "shell",
-      "command": "del *.vsix; vsce package",
+      "command": "npx --yes @vscode/vsce package --out ./release/",
       "problemMatcher": [],
       "group": {
         "kind": "build",

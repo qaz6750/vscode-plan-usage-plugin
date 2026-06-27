@@ -184,7 +184,7 @@ const totalTokensToday = hourlyTokens.reduce((a, b) => a + b, 0);
 
 // Main mock usage response
 export const mockUsageResponse: UsageResponse = {
-    platform: 'ZHIPU',
+    platform: 'glm',
     modelUsage: [
         {
             model: MODELS.GLM51,

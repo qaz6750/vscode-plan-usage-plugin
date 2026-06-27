@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { UsageResponse, TrendData } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
+import { ConfigManager } from '../config';
 import { formatResetTime, formatDateTimeOnly, formatTokens, formatSparklineTime, getWeekdayName } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate, UsageEstimateResult } from './usageEstimate';
 
@@ -43,16 +44,12 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     md.isTrusted = true;
 
     const level = response.level;
-    let titleKey: string;
+    const platformName = ConfigManager.getActivePlatform().descriptor.displayName;
+    const titleKey = level
+        ? `[${level.toUpperCase()}] ${platformName}`
+        : platformName;
 
-    if (level) {
-        const levelText = level.toUpperCase();
-        titleKey = `[${levelText}] GLM Coding Plan Usage`;
-    } else {
-        titleKey = 'GLM Coding Plan Usage';
-    }
-
-    const title = localizedBrackets(vscode.l10n.t(titleKey));
+    const title = localizedBrackets(titleKey);
     md.appendMarkdown(`### ${title}\n\n`);
 
     const now = new Date();

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { UsageResponse, QuotaRatePoint, QuotaRateData, HourlyQuotaStats, DailyQuotaStats } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
+import { ConfigManager } from '../config';
 import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
 import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
@@ -292,9 +293,8 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
     }
 
     const level = (response.level || '').toUpperCase();
-    const title = level
-        ? vscode.l10n.t(`[{0}] GLM Coding Plan Usage`, level)
-        : vscode.l10n.t('GLM Coding Plan Usage');
+    const platformName = ConfigManager.getActivePlatform().descriptor.displayName;
+    const title = level ? `[${level}] ${platformName}` : platformName;
 
     return {
         level,
