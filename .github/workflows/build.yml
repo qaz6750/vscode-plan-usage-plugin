@@ -35,7 +35,7 @@ jobs:
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true
+        # lint 现在为必过：失败将阻断构建
 
       - name: Compile
         run: npm run compile
@@ -56,7 +56,7 @@ jobs:
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
         with:
-          name: glm-plan-usage-vsix-node${{ matrix.node }}
+          name: coding-plan-usage-vsix-node${{ matrix.node }}
           path: release/*.vsix
           if-no-files-found: error
           retention-days: 30
