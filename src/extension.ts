@@ -84,6 +84,8 @@ async function queryUsage(forceRefresh = false): Promise<void> {
 }
 
 function handleConfigChange(): void {
+    // 平台/URL 变更后，失效已缓存的激活平台与 AFK 配置
+    ConfigManager.invalidateActivePlatformCache();
     const oldAFKEnabled = ConfigManager.isAFKDetectionEnabled();
     const oldThreshold = ConfigManager.getAFKThreshold();
     ConfigManager.reloadAFKConfig();

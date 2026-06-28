@@ -41,19 +41,33 @@ export class ConfigManager {
      *  1) 若 platform 显式指定且已注册 → 直接返回该适配器；
      *  2) 否则 ('auto') 按 baseUrl 自动匹配；
      *  3) 都未命中 → 回退到默认平台（GLM，保证向后兼容）。
+     *
+     * 结果会被缓存，避免在状态栏/tooltip/侧栏高频渲染时反复读取配置；
+     * 配置变更时通过 {@link invalidateActivePlatformCache} 失效。
      */
+    private static activePlatformCache: PlatformAdapter | null = null;
+
     static getActivePlatform(): PlatformAdapter {
+        if (this.activePlatformCache) { return this.activePlatformCache; }
+
         const platformId = this.getPlatformId();
+        let adapter: PlatformAdapter | undefined;
         if (platformId && platformId !== 'auto') {
-            const adapter = PlatformRegistry.getById(platformId);
-            if (adapter) { return adapter; }
+            adapter = PlatformRegistry.getById(platformId);
         }
-        const baseUrl = this.getBaseUrl();
-        if (baseUrl) {
-            const adapter = PlatformRegistry.getByBaseUrl(baseUrl);
-            if (adapter) { return adapter; }
+        if (!adapter) {
+            const baseUrl = this.getBaseUrl();
+            if (baseUrl) {
+                adapter = PlatformRegistry.getByBaseUrl(baseUrl);
+            }
         }
-        return PlatformRegistry.getDefault();
+        this.activePlatformCache = adapter ?? PlatformRegistry.getDefault();
+        return this.activePlatformCache;
+    }
+
+    /** 失效已缓存的激活平台（配置变更时调用）。 */
+    static invalidateActivePlatformCache(): void {
+        this.activePlatformCache = null;
     }
 
     static getAutoRefresh(): boolean {
