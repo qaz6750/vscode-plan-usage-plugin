@@ -186,7 +186,9 @@ export const glmAdapter: PlatformAdapter = {
         const { startTime: startTime30, endTime: endTime30 } = get30DayTimeWindow();
         const queryParams30 = `?startTime=${encodeURIComponent(startTime30)}&endTime=${encodeURIComponent(endTime30)}`;
 
-        const [modelUsageRaw, toolUsageRaw, quotaLimitResponse, modelUsage30Raw] = await Promise.all([
+        // 并发请求 4 个端点，任一失败不应丢弃其余数据：用 allSettled 容忍部分失败。
+        // 配额接口（quota/limit）最关键 —— 失败时记录但仍返回其余统计，状态栏会显示 N/A。
+        const [modelUsageRes, toolUsageRes, quotaLimitRes, modelUsage30Res] = await Promise.allSettled([
             httpsGetWithRetry<any>(modelUsageUrl, authToken, queryParams),
             httpsGetWithRetry<any>(toolUsageUrl, authToken, queryParams),
             httpsGetWithRetry<any>(quotaLimitUrl, authToken, undefined, (data) => {
@@ -200,13 +202,22 @@ export const glmAdapter: PlatformAdapter = {
             httpsGetWithRetry<any>(modelUsageUrl, authToken, queryParams30),
         ]);
 
-        const modelUsage = ensureArray<ModelUsageData>(modelUsageRaw?.modelUsage || modelUsageRaw);
-        const toolUsage = ensureArray<ToolUsageData>(toolUsageRaw);
-        const trend = processTrendData(modelUsageRaw);
-        const activeDaysInfo = parseActiveDaysInfo(modelUsageRaw);
-        const monthTrend = processTrendData(modelUsage30Raw);
-        const quotaLimits = quotaLimitResponse.processedQuotaLimits;
-        const level = quotaLimitResponse.level;
+        if (quotaLimitRes.status === 'rejected') {
+            console.error('[GPU] quota/limit request failed:', quotaLimitRes.reason?.message || quotaLimitRes.reason);
+        }
+
+        const modelUsageRaw = modelUsageRes.status === 'fulfilled' ? modelUsageRes.value : undefined;
+        const toolUsageRaw = toolUsageRes.status === 'fulfilled' ? toolUsageRes.value : undefined;
+        const quotaLimitResponse = quotaLimitRes.status === 'fulfilled' ? quotaLimitRes.value : undefined;
+        const modelUsage30Raw = modelUsage30Res.status === 'fulfilled' ? modelUsage30Res.value : undefined;
+
+        const modelUsage = modelUsageRaw ? ensureArray<ModelUsageData>(modelUsageRaw.modelUsage || modelUsageRaw) : [];
+        const toolUsage = toolUsageRaw ? ensureArray<ToolUsageData>(toolUsageRaw) : [];
+        const trend = modelUsageRaw ? processTrendData(modelUsageRaw) : undefined;
+        const activeDaysInfo = modelUsageRaw ? parseActiveDaysInfo(modelUsageRaw) : undefined;
+        const monthTrend = modelUsage30Raw ? processTrendData(modelUsage30Raw) : undefined;
+        const quotaLimits = quotaLimitResponse?.processedQuotaLimits ?? [];
+        const level = quotaLimitResponse?.level;
 
         return {
             platform: 'glm',
