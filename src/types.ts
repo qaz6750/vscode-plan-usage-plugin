@@ -1,8 +1,9 @@
 /**
- * 平台标识。放宽为字符串以支持任意平台适配器（'glm'、'kimi'、'doubao'…）。
+ * 平台标识。使用联合类型保留对已知平台（'glm'、'kimi'、'doubao'）的自动补全，
+ * 同时通过 `(string & {})` 仍允许任意自定义平台 id，兼顾类型安全与可扩展性。
  * 该字段目前仅由适配器写入，用于内部标记，不参与显示逻辑。
  */
-export type Platform = string;
+export type Platform = 'glm' | 'kimi' | 'doubao' | (string & {});
 
 export interface UsageQueryConfig {
     authToken: string;
