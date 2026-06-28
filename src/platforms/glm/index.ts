@@ -12,8 +12,9 @@
 import { URL } from 'url';
 import { UsageResponse, ModelUsageData, ToolUsageData, QuotaLimitData, TrendData, ActiveDaysInfo } from '../../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../../constants';
-import { PlatformAdapter, PlatformPlan, UsageQueryConfig } from '../types';
+import { PlatformAdapter, PlatformPlan, CostEstimate, UsageQueryConfig } from '../types';
 import { httpsGetWithRetry } from '../httpClient';
+import { estimateGlmCost } from './pricing';
 
 // ===== 套餐档位（迁自 constants.ts） =====
 
@@ -170,6 +171,19 @@ export const glmAdapter: PlatformAdapter = {
         if (!level) { return undefined; }
         const lower = level.toLowerCase();
         return plans.find((p) => p.level.toLowerCase() === lower);
+    },
+
+    estimateCost(modelUsage: ModelUsageData[]): CostEstimate | null {
+        if (!modelUsage || modelUsage.length === 0) { return null; }
+        const est = estimateGlmCost(modelUsage);
+        if (est.totalCny <= 0) { return null; }
+        return {
+            totalCny: est.totalCny,
+            perModel: est.perModel,
+            // modelUsage 来自 7 天时间窗口的查询
+            windowLabel: 'Last 7 days',
+            hasFallback: est.hasFallback,
+        };
     },
 
     async queryUsage({ authToken, baseUrl }: UsageQueryConfig): Promise<UsageResponse> {

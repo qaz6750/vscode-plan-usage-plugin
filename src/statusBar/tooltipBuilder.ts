@@ -44,7 +44,8 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     md.isTrusted = true;
 
     const level = response.level;
-    const platformName = ConfigManager.getActivePlatform().descriptor.displayName;
+    const adapter = ConfigManager.getActivePlatform();
+    const platformName = adapter.descriptor.displayName;
     const titleKey = level
         ? `[${level.toUpperCase()}] ${platformName}`
         : platformName;
@@ -54,6 +55,14 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
 
     const now = new Date();
     md.appendMarkdown(`**${vscode.l10n.t('Updated')}:** ${now.toLocaleString()}\n\n`);
+
+    // 等价 API 花费估算（仅当平台提供定价数据时显示）
+    const cost = adapter.estimateCost ? adapter.estimateCost(response.modelUsage) : null;
+    if (cost && cost.totalCny > 0) {
+        const fallbackMark = cost.hasFallback ? ' ⚠️' : '';
+        md.appendMarkdown(`**${vscode.l10n.t('Equivalent API cost')} (${cost.windowLabel}):** ≈¥${cost.totalCny.toFixed(2)}${fallbackMark}\n\n`);
+    }
+
     md.appendMarkdown(`---\n\n`);
 
     if (fiveHourLimit) {

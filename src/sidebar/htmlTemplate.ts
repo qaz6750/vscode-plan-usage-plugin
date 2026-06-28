@@ -259,6 +259,7 @@ body {
   <button class="refresh-btn" id="refresh-btn" onclick="doRefresh()">&#x21bb;</button>
 </div>
 <div class="updated" id="header-updated" style="margin-bottom:10px;font-size:10px;color:var(--vscode-descriptionForeground)"></div>
+<div id="header-cost" style="margin-bottom:10px;font-size:11px;font-weight:600;display:none"></div>
 
 <div id="error-section" style="display:none">
   <div class="error-container">
@@ -1068,6 +1069,15 @@ let currentChartType = 'bar';
 
     document.getElementById('header-title').textContent = loc.title || 'Coding Plan Usage';
     document.getElementById('header-updated').textContent = (loc.updated || 'Updated') + ': ' + (data.updated || '');
+    const costEl = document.getElementById('header-cost');
+    const ec = data.estimatedCost;
+    if (costEl && ec && ec.totalCny > 0) {
+      const note = ec.hasFallback ? ' <span style="font-weight:400;opacity:0.7">(' + (loc.estimatedCostFallbackNote || '') + ')</span>' : '';
+      costEl.innerHTML = (loc.estimatedCostLabel || 'Equivalent API cost') + ' (' + (ec.windowLabel || '') + '): ≈¥' + ec.totalCny.toFixed(2) + note;
+      costEl.style.display = '';
+    } else if (costEl) {
+      costEl.style.display = 'none';
+    }
     document.getElementById('refresh-btn').title = loc.refresh || 'Refresh';
     document.getElementById('settings-label').textContent = loc.settings || 'Settings';
     document.getElementById('apikey-label').textContent = loc.configureApiKey || 'Configure API Key';

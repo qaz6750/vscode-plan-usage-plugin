@@ -8,7 +8,7 @@
  *   {@link QUOTA_TYPE_WEEKLY} / {@link QUOTA_TYPE_MCP} 这几个规范类型，从而让
  *   下游的状态栏 / 估算 / 历史记录 / 侧边栏管线无需感知平台差异。
  */
-import type { UsageResponse, UsageQueryConfig } from '../types';
+import type { UsageResponse, UsageQueryConfig, ModelUsageData } from '../types';
 
 /**
  * 平台标识，如 'glm'、'kimi'、'doubao'。用于设置项与存储键。
@@ -51,6 +51,24 @@ export interface PlatformPlan {
     };
 }
 
+/** 单个模型的等价计费估算。 */
+export interface ModelCostEstimate {
+    model: string;
+    costCny: number;
+}
+
+/** 等价计费估算结果（CNY）。Coding Plan 是订阅制，此处折算为「按量 API 计费等价金额」。 */
+export interface CostEstimate {
+    /** 合计金额（元） */
+    totalCny: number;
+    /** 按模型拆分（已按金额降序） */
+    perModel: ModelCostEstimate[];
+    /** 时间窗口标签，如 '近 7 天' / 'Last 7 days' */
+    windowLabel: string;
+    /** 是否存在未能精确匹配定价的模型（已用回退价估算） */
+    hasFallback: boolean;
+}
+
 /** 平台适配器契约。 */
 export interface PlatformAdapter {
     readonly descriptor: PlatformDescriptor;
@@ -67,4 +85,9 @@ export interface PlatformAdapter {
     queryUsage(config: UsageQueryConfig): Promise<UsageResponse>;
     /** 按档位编码查找套餐（大小写不敏感）。 */
     getPlan(level: string): PlatformPlan | undefined;
+    /**
+     * 可选：根据模型用量估算等价 API 计费金额（CNY）。
+     * 未实现（如脚手架平台）时返回 null，UI 将隐藏该信息。
+     */
+    estimateCost?(modelUsage: ModelUsageData[]): CostEstimate | null;
 }

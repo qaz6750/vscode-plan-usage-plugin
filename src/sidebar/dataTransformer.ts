@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { UsageResponse, QuotaRatePoint, QuotaRateData, HourlyQuotaStats, DailyQuotaStats } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { ConfigManager } from '../config';
+import type { CostEstimate } from '../platforms';
 import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
 import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
@@ -119,6 +120,10 @@ export interface SidebarLocales {
     lineChart: string;
     todayLabel: string;
     weekLabel: string;
+    /** 等价 API 花费标签 */
+    estimatedCostLabel: string;
+    /** 存在未精确匹配定价模型时的提示 */
+    estimatedCostFallbackNote: string;
 }
 
 export interface SidebarData {
@@ -130,6 +135,8 @@ export interface SidebarData {
     week: DailyData | null;
     month: DailyData | null;
     quotaRate: QuotaRateData;
+    /** 按 API 计费折算的等价花费（无定价数据时为 null） */
+    estimatedCost: CostEstimate | null;
 }
 
 export function transformResponse(response: UsageResponse, hourlyQuotaStats?: HourlyQuotaStats[], weeklyQuotaStats?: DailyQuotaStats[]): SidebarData {
@@ -293,8 +300,10 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
     }
 
     const level = (response.level || '').toUpperCase();
-    const platformName = ConfigManager.getActivePlatform().descriptor.displayName;
+    const adapter = ConfigManager.getActivePlatform();
+    const platformName = adapter.descriptor.displayName;
     const title = level ? `[${level}] ${platformName}` : platformName;
+    const estimatedCost = adapter.estimateCost ? adapter.estimateCost(response.modelUsage) : null;
 
     return {
         level,
@@ -337,12 +346,15 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
             Sat: vscode.l10n.t('Sat'),
             barChart: vscode.l10n.t('Bar'),
             lineChart: vscode.l10n.t('Line'),
+            estimatedCostLabel: vscode.l10n.t('Equivalent API cost'),
+            estimatedCostFallbackNote: vscode.l10n.t('Estimated; some models use fallback pricing'),
         },
         quotas,
         today,
         week,
         month,
-        quotaRate: buildQuotaRateData(hourlyQuotaStats, weeklyQuotaStats, level)
+        quotaRate: buildQuotaRateData(hourlyQuotaStats, weeklyQuotaStats, level),
+        estimatedCost
     };
 }
 
