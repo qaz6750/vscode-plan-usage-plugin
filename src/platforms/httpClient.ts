@@ -9,7 +9,19 @@ import { URL } from 'url';
 import { ConfigManager } from '../config';
 
 const MAX_RETRY_COUNT = 3;
-const RETRY_DELAY_MS = 1000;
+const RETRY_BASE_DELAY_MS = 1000;
+const RETRY_MAX_DELAY_MS = 8000;
+
+/**
+ * 指数退避 + 抖动：base × 2^(attempt-1)，封顶 max，再叠加 75%–125% 随机抖动。
+ * 相比线性退避，更适合 429/5xx 限流场景，避免多客户端同步重试造成惊群。
+ */
+function computeBackoffDelay(attempt: number): number {
+    const exp = RETRY_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+    const capped = Math.min(exp, RETRY_MAX_DELAY_MS);
+    const jitter = capped * (0.75 + Math.random() * 0.5);
+    return Math.round(jitter);
+}
 
 /** 判断错误是否可重试（网络错误、超时、5xx、429）。 */
 export function isRetryableError(error: unknown): boolean {
@@ -44,8 +56,9 @@ export async function httpsGetWithRetry<T>(
         } catch (error) {
             lastError = error;
             if (attempt < maxAttempts && isRetryableError(error)) {
-                console.log(`[GPU] Retry ${attempt}/${MAX_RETRY_COUNT} for ${url}`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+                const delay = computeBackoffDelay(attempt);
+                console.log(`[GPU] Retry ${attempt}/${MAX_RETRY_COUNT} for ${url} in ${delay}ms`);
+                await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
             throw error;
