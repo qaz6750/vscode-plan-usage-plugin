@@ -34,6 +34,8 @@ export interface PlatformDescriptor {
     defaultBaseUrl: string;
     /** API / 鉴权文档链接（可选）。 */
     docsUrl?: string;
+    /** 该平台已知模型 → 图表颜色的映射（可选）。未列出的模型用通用调色板。 */
+    modelColors?: Record<string, string>;
 }
 
 /** 平台提供的某一档订阅套餐（如 GLM 的 Lite/Pro/Max）。 */

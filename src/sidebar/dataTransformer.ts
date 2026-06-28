@@ -137,6 +137,8 @@ export interface SidebarData {
     quotaRate: QuotaRateData;
     /** 按 API 计费折算的等价花费（无定价数据时为 null） */
     estimatedCost: CostEstimate | null;
+    /** 已知模型 → 图表颜色（来自当前平台 adapter，可覆盖默认调色板） */
+    modelColors: Record<string, string>;
 }
 
 export function transformResponse(response: UsageResponse, hourlyQuotaStats?: HourlyQuotaStats[], weeklyQuotaStats?: DailyQuotaStats[]): SidebarData {
@@ -354,7 +356,8 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
         week,
         month,
         quotaRate: buildQuotaRateData(hourlyQuotaStats, weeklyQuotaStats, level),
-        estimatedCost
+        estimatedCost,
+        modelColors: adapter.descriptor.modelColors || {}
     };
 }
 

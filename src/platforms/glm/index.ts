@@ -43,6 +43,16 @@ const descriptor = {
     baseUrls: ['api.z.ai', 'open.bigmodel.cn', 'dev.bigmodel.cn'],
     defaultBaseUrl: 'https://open.bigmodel.cn/api/anthropic',
     docsUrl: 'https://open.bigmodel.cn',
+    // 已知 GLM 模型 → 图表颜色（权威色表，从 htmlTemplate 下沉至此）
+    modelColors: {
+        'GLM-5.2': '#5985f5',
+        'GLM-5.1': '#4ecdc4',
+        'GLM-5-Turbo': '#f38441',
+        'GLM-5V-Turbo': '#b86fe5',
+        'GLM4.7': '#00c9a7',
+        'GLM-4.6V': '#ff6b6b',
+        'GLM-4.5-Air': '#ffd93d',
+    },
 };
 
 // ===== 查询辅助（迁自 usageQuery.ts） =====

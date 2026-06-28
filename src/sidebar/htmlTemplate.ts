@@ -386,6 +386,7 @@ let currentChartType = 'bar';
   }
 
   var KNOWN_MODEL_COLORS = {
+    // 默认回退色表；当前平台 adapter 的 modelColors 会在渲染时合并覆盖这些值
     'GLM-5.2': '#5985f5',
     'GLM-5.1': '#4ecdc4',
     'GLM-5-Turbo': '#f38441',
@@ -1069,6 +1070,14 @@ let currentChartType = 'bar';
     document.getElementById('no-data').style.display = 'none';
 
     document.getElementById('header-title').textContent = loc.title || 'Coding Plan Usage';
+    // 合并当前平台 adapter 提供的模型色表（覆盖默认回退色）
+    if (data.modelColors) {
+      for (var mk in data.modelColors) {
+        if (Object.prototype.hasOwnProperty.call(data.modelColors, mk)) {
+          KNOWN_MODEL_COLORS[mk] = data.modelColors[mk];
+        }
+      }
+    }
     document.getElementById('header-updated').textContent = (loc.updated || 'Updated') + ': ' + (data.updated || '');
     const costEl = document.getElementById('header-cost');
     const breakdownEl = document.getElementById('header-cost-breakdown');
