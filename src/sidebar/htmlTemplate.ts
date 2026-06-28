@@ -255,7 +255,7 @@ body {
   <div class="loading-text" id="loading-text">Loading...</div>
 </div>
 <div class="header">
-  <span class="title" id="header-title">GLM Coding Plan Usage</span>
+  <span class="title" id="header-title">Coding Plan Usage</span>
   <button class="refresh-btn" id="refresh-btn" onclick="doRefresh()">&#x21bb;</button>
 </div>
 <div class="updated" id="header-updated" style="margin-bottom:10px;font-size:10px;color:var(--vscode-descriptionForeground)"></div>
@@ -1066,7 +1066,7 @@ let currentChartType = 'bar';
 
     document.getElementById('no-data').style.display = 'none';
 
-    document.getElementById('header-title').textContent = loc.title || 'GLM Coding Plan Usage';
+    document.getElementById('header-title').textContent = loc.title || 'Coding Plan Usage';
     document.getElementById('header-updated').textContent = (loc.updated || 'Updated') + ': ' + (data.updated || '');
     document.getElementById('refresh-btn').title = loc.refresh || 'Refresh';
     document.getElementById('settings-label').textContent = loc.settings || 'Settings';

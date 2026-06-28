@@ -110,7 +110,7 @@ function handleConfigChange(): void {
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('GLM Plan Usage extension is activating...');
+    console.log('Coding Plan Usage extension is activating...');
 
     extensionContext = context;
     statusBarManager = new StatusBarManager();
@@ -195,10 +195,10 @@ export async function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    console.log('GLM Plan Usage extension activated successfully');
+    console.log('Coding Plan Usage extension activated successfully');
 }
 
 export function deactivate() {
     autoRefreshManager?.dispose();
-    console.log('GLM Plan Usage extension deactivated');
+    console.log('Coding Plan Usage extension deactivated');
 }
