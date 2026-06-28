@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- postProcessor 接收任意已解析的服务器 JSON */
 /**
  * 平台无关的 HTTPS 客户端（从 usageQuery.ts 抽离）。
  *

@@ -66,10 +66,12 @@ export class AutoRefreshManager implements vscode.Disposable {
             if (limit.nextResetTime && limit.nextResetTime > now
                 && (limit.type === QUOTA_TYPE_5H || limit.type === QUOTA_TYPE_WEEKLY)) {
                 const key = limit.nextResetTime;
-                if (!resetTypes.has(key)) {
-                    resetTypes.set(key, []);
+                let types = resetTypes.get(key);
+                if (!types) {
+                    types = [];
+                    resetTypes.set(key, types);
                 }
-                resetTypes.get(key)!.push(limit.type);
+                types.push(limit.type);
             }
         }
 

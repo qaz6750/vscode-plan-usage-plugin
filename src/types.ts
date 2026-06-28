@@ -3,6 +3,7 @@
  * 同时通过 `(string & {})` 仍允许任意自定义平台 id，兼顾类型安全与可扩展性。
  * 该字段目前仅由适配器写入，用于内部标记，不参与显示逻辑。
  */
+// eslint-disable-next-line @typescript-eslint/ban-types -- (string & {}) 让字面量联合保留自动补全、同时仍允许任意字符串的惯用写法
 export type Platform = 'glm' | 'kimi' | 'doubao' | (string & {});
 
 export interface UsageQueryConfig {

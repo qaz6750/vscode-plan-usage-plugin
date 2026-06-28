@@ -193,10 +193,12 @@ export class QuotaHistoryTracker {
         const dayMap = new Map<string, HourlyQuotaSnapshot[]>();
         for (const snap of sorted) {
             const dateKey = snap.hourKey.substring(0, 10);
-            if (!dayMap.has(dateKey)) {
-                dayMap.set(dateKey, []);
+            let daySnaps = dayMap.get(dateKey);
+            if (!daySnaps) {
+                daySnaps = [];
+                dayMap.set(dateKey, daySnaps);
             }
-            dayMap.get(dateKey)!.push(snap);
+            daySnaps.push(snap);
         }
 
         const now = new Date();

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- 与外部 GLM 监控 API 交互的原始 JSON 无类型定义 */
 /**
  * GLM Coding Plan（智谱 / Z.ai）平台适配器。
  *

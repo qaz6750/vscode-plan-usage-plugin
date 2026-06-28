@@ -88,20 +88,21 @@ export class StatusBarManager implements vscode.Disposable {
         if (fiveHourLimit !== undefined && weeklyLimit !== undefined) {
             const t5 = fiveHourLimit.nextResetTime ? formatRemainingTimeCompact(fiveHourLimit.nextResetTime) : '';
             const tw = weeklyLimit.nextResetTime ? formatRemainingTimeCompact(weeklyLimit.nextResetTime) : '';
-            this.statusItem.text = `${label}: ${fiveHourPct!.toFixed(0)}%${t5 ? ' ' + t5 : ''} | ${weeklyPct!.toFixed(0)}%${tw ? ' ' + tw : ''}`;
+            this.statusItem.text = `${label}: ${fiveHourLimit.percentage.toFixed(0)}%${t5 ? ' ' + t5 : ''} | ${weeklyLimit.percentage.toFixed(0)}%${tw ? ' ' + tw : ''}`;
         } else if (fiveHourLimit !== undefined) {
             const t5 = fiveHourLimit.nextResetTime ? formatRemainingTimeCompact(fiveHourLimit.nextResetTime) : '';
-            this.statusItem.text = `${label}: ${fiveHourPct!.toFixed(0)}%${t5 ? ' ' + t5 : ''}`;
+            this.statusItem.text = `${label}: ${fiveHourLimit.percentage.toFixed(0)}%${t5 ? ' ' + t5 : ''}`;
         } else if (weeklyLimit !== undefined) {
             const tw = weeklyLimit.nextResetTime ? formatRemainingTimeCompact(weeklyLimit.nextResetTime) : '';
-            this.statusItem.text = `${label}: ${weeklyPct!.toFixed(0)}%${tw ? ' ' + tw : ''}`;
+            this.statusItem.text = `${label}: ${weeklyLimit.percentage.toFixed(0)}%${tw ? ' ' + tw : ''}`;
         } else {
             this.statusItem.text = `${label}: N/A`;
         }
 
         const fiveHourEstimate = fiveHourLimit ? calculate5HourEstimate(fiveHourLimit.percentage, fiveHourLimit.nextResetTime) : null;
         const weeklyEstimate = weeklyLimit ? calculateWeeklyEstimate(weeklyLimit.percentage, weeklyLimit.nextResetTime) : null;
-        const bothSufficient = fiveHourPct! < 70 && weeklyPct! < 70 && (!fiveHourEstimate || !fiveHourEstimate.willExceed) && (!weeklyEstimate || !weeklyEstimate.willExceed);
+        // 缺失百分比视为「不充裕」（与原 ! 断言在 undefined 时的运行时行为一致）
+        const bothSufficient = (fiveHourPct ?? 101) < 70 && (weeklyPct ?? 101) < 70 && (!fiveHourEstimate || !fiveHourEstimate.willExceed) && (!weeklyEstimate || !weeklyEstimate.willExceed);
         this.statusItem.color = bothSufficient ? '#89D185' : getCombinedColor({
             fiveHourPct,
             weeklyPct

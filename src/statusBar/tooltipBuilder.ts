@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { UsageResponse, TrendData } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { ConfigManager } from '../config';
-import { formatResetTime, formatDateTimeOnly, formatTokens, formatSparklineTime, getWeekdayName } from './formatters';
+import { formatResetTime, formatDateTimeOnly, getWeekdayName } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate, UsageEstimateResult } from './usageEstimate';
 
 export interface TrendSlice {
@@ -366,6 +366,7 @@ function buildMarkdownBar(percentage: number, width: number): string {
     return `${on.repeat(filled)}${'⬜'.repeat(empty)} ${percentage.toFixed(1)}%`;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- 已被 echarts 图表取代，待清理
 function buildSparkline(trend: TrendSlice): { bars: string; startIndex: number } | null {
     if (!trend.yValue || trend.yValue.length === 0) {
         return null;

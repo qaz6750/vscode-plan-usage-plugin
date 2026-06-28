@@ -48,7 +48,8 @@ export class QuotaWarningChecker {
     }
 
     private async showWarning(item: QuotaLimitData): Promise<void> {
-        const resetTime = item.nextResetTime!;
+        const resetTime = item.nextResetTime;
+        if (resetTime === undefined) { return; }
 
         // 双重检查：可能在本轮其他警告处理中已被标记
         if (this.getWarnedResetTimes().has(resetTime)) {

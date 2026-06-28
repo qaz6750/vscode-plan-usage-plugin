@@ -5,7 +5,7 @@
  * for taking screenshots.
  */
 
-import { UsageResponse, TrendData, ModelTrendData, QuotaLimitData, HourlyQuotaStats, DailyQuotaStats } from './types';
+import { UsageResponse, TrendData, QuotaLimitData, HourlyQuotaStats, DailyQuotaStats } from './types';
 
 // Current time for realistic timestamps
 const now = new Date();
