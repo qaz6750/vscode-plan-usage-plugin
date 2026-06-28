@@ -411,12 +411,21 @@ let currentChartType = 'bar';
     return palette[palette.length - 1];
   }
 
+  // 复用 echarts 实例：避免每次刷新都 dispose()+init()（会反复分配 canvas/GPU 资源，造成卡顿与内存波动）。
+  // clear() 清空配置达到与全新初始化相同的视觉状态，但保留实例与底层资源，大幅降低刷新开销。
+  function reuseChart(chart, dom) {
+    if (chart && !chart.isDisposed()) {
+      chart.clear();
+      return chart;
+    }
+    return echarts.init(dom);
+  }
+
   function initTodayChart(data, metric, chartType) {
     try {
       const dom = document.getElementById('today-chart');
       if (!dom) return;
-      if (todayChart) todayChart.dispose();
-      todayChart = echarts.init(dom);
+      todayChart = reuseChart(todayChart, dom);
       const c = chartColors();
       var usedColors = [];
 
@@ -680,8 +689,7 @@ let currentChartType = 'bar';
   function initWeekChart(data, is30Day, metric) {
     const dom = document.getElementById('week-chart');
     if (!dom) return;
-    if (weekChart) weekChart.dispose();
-    weekChart = echarts.init(dom);
+    weekChart = reuseChart(weekChart, dom);
     const c = chartColors();
     var usedColors = [];
 
@@ -832,8 +840,7 @@ let currentChartType = 'bar';
     try {
       const dom = document.getElementById('quota-rate-chart');
       if (!dom) return;
-      if (quotaChart) quotaChart.dispose();
-      quotaChart = echarts.init(dom);
+      quotaChart = reuseChart(quotaChart, dom);
       const c = chartColors();
 
       // Set title and toggle labels
