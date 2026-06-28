@@ -6,10 +6,9 @@
 import { PlatformAdapter, PlatformId } from './types';
 import { glmAdapter } from './glm';
 import { kimiAdapter } from './kimi';
-import { doubaoAdapter } from './doubao';
 
 /** 已注册的全部平台适配器（顺序决定设置项下拉顺序）。 */
-const ADAPTERS: PlatformAdapter[] = [glmAdapter, kimiAdapter, doubaoAdapter];
+const ADAPTERS: PlatformAdapter[] = [glmAdapter, kimiAdapter];
 
 export class PlatformRegistry {
     /** 列出全部已注册平台。 */

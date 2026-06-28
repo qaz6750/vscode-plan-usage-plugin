@@ -24,23 +24,24 @@ export class ConfigManager {
     static getBaseUrl(): string {
         const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
         const url = config.get<string>('baseUrl') || '';
-        return url || '';
+        if (url) { return url; }
+        // 未显式配置时，沿用当前平台适配器的默认地址（平台是服务选择的唯一来源）
+        return this.getActivePlatform().descriptor.defaultBaseUrl;
     }
 
     /**
-     * 读取设置项 glmPlanUsage.platform（默认 'auto'）。
-     * 'auto' 表示按 baseUrl 自动识别所属平台。
+     * 读取设置项 glmPlanUsage.platform（默认 'glm'）。
+     * 平台是服务选择的唯一来源；baseUrl 未配置时由平台默认地址派生，
+     * 避免 platform 与 baseUrl 重复编码同一信息。
      */
     static getPlatformId(): string {
         const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        return config.get<string>('platform') || 'auto';
+        return config.get<string>('platform') || 'glm';
     }
 
     /**
-     * 解析当前激活的平台适配器：
-     *  1) 若 platform 显式指定且已注册 → 直接返回该适配器；
-     *  2) 否则 ('auto') 按 baseUrl 自动匹配；
-     *  3) 都未命中 → 回退到默认平台（GLM，保证向后兼容）。
+     * 解析当前激活的平台适配器：直接按 platform 设置项选取，未命中则回退到默认（GLM）。
+     * 不再依据 baseUrl 反推平台，避免 platform 与 baseUrl 的逻辑重复。
      *
      * 结果会被缓存，避免在状态栏/tooltip/侧栏高频渲染时反复读取配置；
      * 配置变更时通过 {@link invalidateActivePlatformCache} 失效。
@@ -51,17 +52,7 @@ export class ConfigManager {
         if (this.activePlatformCache) { return this.activePlatformCache; }
 
         const platformId = this.getPlatformId();
-        let adapter: PlatformAdapter | undefined;
-        if (platformId && platformId !== 'auto') {
-            adapter = PlatformRegistry.getById(platformId);
-        }
-        if (!adapter) {
-            const baseUrl = this.getBaseUrl();
-            if (baseUrl) {
-                adapter = PlatformRegistry.getByBaseUrl(baseUrl);
-            }
-        }
-        this.activePlatformCache = adapter ?? PlatformRegistry.getDefault();
+        this.activePlatformCache = PlatformRegistry.getById(platformId) ?? PlatformRegistry.getDefault();
         return this.activePlatformCache;
     }
 

@@ -79,24 +79,20 @@
         },
         "glmPlanUsage.platform": {
           "type": "string",
-          "default": "auto",
+          "default": "glm",
           "enum": [
-            "auto",
             "glm",
-            "kimi",
-            "doubao"
+            "kimi"
           ],
           "enumDescriptions": [
-            "%configuration.platform.enum.auto%",
             "%configuration.platform.enum.glm%",
-            "%configuration.platform.enum.kimi%",
-            "%configuration.platform.enum.doubao%"
+            "%configuration.platform.enum.kimi%"
           ],
           "description": "%configuration.platform.description%"
         },
         "glmPlanUsage.baseUrl": {
           "type": "string",
-          "default": "https://open.bigmodel.cn/api/anthropic",
+          "default": "",
           "markdownDescription": "%configuration.baseUrl.description%"
         },
         "glmPlanUsage.autoRefresh": {
