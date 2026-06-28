@@ -30,9 +30,9 @@ export const GLM_MODEL_PRICES: Record<string, ModelPrice> = {
 /** 未知模型回退价（保守取旗舰 GLM-5.2 价位）。 */
 const FALLBACK_PRICE: ModelPrice = { inputPerMillion: 8, outputPerMillion: 28 };
 
-/** 规范化模型名：小写 + 去空格，便于与定价表匹配。 */
+/** 规范化模型名：小写 + 去空格，便于与定价表匹配。防御 undefined/null/非字符串输入。 */
 function normalize(model: string): string {
-    return model.toLowerCase().replace(/\s+/g, '');
+    return String(model ?? '').toLowerCase().replace(/\s+/g, '');
 }
 
 /** 查询模型定价；精确 → 前缀匹配 → 回退价。 */
@@ -62,6 +62,8 @@ export function estimateGlmCost(modelUsage: ModelUsageData[]): GlmCostEstimate {
     const perModel: { model: string; costCny: number }[] = [];
 
     for (const m of modelUsage) {
+        // 跳过缺少模型名的条目（如聚合/总计行），避免后续匹配报错
+        if (!m || !m.model) { continue; }
         const { price, isFallback } = getGlmModelPrice(m.model);
         if (isFallback) { hasFallback = true; }
         const cost =

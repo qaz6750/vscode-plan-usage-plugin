@@ -186,15 +186,21 @@ export const glmAdapter: PlatformAdapter = {
 
     estimateCost(modelUsage: ModelUsageData[]): CostEstimate | null {
         if (!modelUsage || modelUsage.length === 0) { return null; }
-        const est = estimateGlmCost(modelUsage);
-        if (est.totalCny <= 0) { return null; }
-        return {
-            totalCny: est.totalCny,
-            perModel: est.perModel,
-            // modelUsage 来自 7 天时间窗口的查询
-            windowLabel: 'Last 7 days',
-            hasFallback: est.hasFallback,
-        };
+        // 花费估算为次要信息，绝不能因定价匹配异常而阻断主渲染：整体兜底返回 null
+        try {
+            const est = estimateGlmCost(modelUsage);
+            if (est.totalCny <= 0) { return null; }
+            return {
+                totalCny: est.totalCny,
+                perModel: est.perModel,
+                // modelUsage 来自 7 天时间窗口的查询
+                windowLabel: 'Last 7 days',
+                hasFallback: est.hasFallback,
+            };
+        } catch (e) {
+            console.error('[GPU] estimateCost failed:', e);
+            return null;
+        }
     },
 
     async queryUsage({ authToken, baseUrl }: UsageQueryConfig): Promise<UsageResponse> {
