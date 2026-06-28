@@ -1336,11 +1336,19 @@ let currentChartType = 'bar';
     }
   });
 
-  var observer = new ResizeObserver(function() {
-    if (todayChart) todayChart.resize();
-    if (quotaChart) quotaChart.resize();
-    if (weekChart) weekChart.resize();
-  });
+  // 用 requestAnimationFrame 合并连续的 resize 回调：拖拽面板时会高频触发，
+  // 合并后每帧最多 resize 一次，避免对三个图表反复重排重绘造成的 CPU 峰值。
+  var resizeRaf = null;
+  function scheduleResize() {
+    if (resizeRaf !== null) { return; }
+    resizeRaf = requestAnimationFrame(function () {
+      resizeRaf = null;
+      if (todayChart) { todayChart.resize(); }
+      if (quotaChart) { quotaChart.resize(); }
+      if (weekChart) { weekChart.resize(); }
+    });
+  }
+  var observer = new ResizeObserver(scheduleResize);
   var tc = document.getElementById('today-chart');
   var qc = document.getElementById('quota-rate-chart');
   var wc = document.getElementById('week-chart');
