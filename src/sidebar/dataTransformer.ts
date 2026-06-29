@@ -122,6 +122,8 @@ export interface SidebarLocales {
     weekLabel: string;
     /** 等价 API 花费标签 */
     estimatedCostLabel: string;
+    /** 花费估算方式的 hover 提示 */
+    estimatedCostHint: string;
     /** 存在未精确匹配定价模型时的提示 */
     estimatedCostFallbackNote: string;
 }
@@ -348,7 +350,8 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
             Sat: vscode.l10n.t('Sat'),
             barChart: vscode.l10n.t('Bar'),
             lineChart: vscode.l10n.t('Line'),
-            estimatedCostLabel: vscode.l10n.t('Equivalent API cost'),
+            estimatedCostLabel: vscode.l10n.t('Equivalent API cost (estimated)'),
+            estimatedCostHint: vscode.l10n.t('Estimate based on today\'s tokens at blended input/output pricing; not an exact bill'),
             estimatedCostFallbackNote: vscode.l10n.t('Estimated; some models use fallback pricing'),
         },
         quotas,

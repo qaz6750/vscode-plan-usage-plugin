@@ -69,7 +69,7 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     const cost = adapter.estimateCost ? adapter.estimateCost(getTodayModelTokenTotals(response)) : null;
     if (cost && cost.totalCny > 0) {
         const fallbackMark = cost.hasFallback ? ' ⚠️' : '';
-        md.appendMarkdown(`**${vscode.l10n.t('Equivalent API cost')} (${cost.windowLabel}):** ≈¥${cost.totalCny.toFixed(2)}${fallbackMark}\n\n`);
+        md.appendMarkdown(`**${vscode.l10n.t('Equivalent API cost (estimated)')} (${cost.windowLabel}):** ≈¥${cost.totalCny.toFixed(2)}${fallbackMark}\n\n`);
     }
 
     md.appendMarkdown(`---\n\n`);

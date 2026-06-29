@@ -1168,7 +1168,8 @@ let currentChartType = 'bar';
       var todayCostRow = document.getElementById('today-cost-row');
       var ec = data.estimatedCost;
       if (todayCostRow && ec && ec.totalCny > 0) {
-        document.getElementById('today-cost-label').textContent = loc.estimatedCostLabel || 'Equivalent API cost';
+        document.getElementById('today-cost-label').textContent = loc.estimatedCostLabel || 'Equivalent API cost (estimated)';
+        todayCostRow.title = loc.estimatedCostHint || '';
         document.getElementById('today-cost').textContent = ec.totalCny.toFixed(2);
         var bk = document.getElementById('today-cost-breakdown');
         if (bk) {
