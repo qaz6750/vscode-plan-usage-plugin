@@ -1109,6 +1109,22 @@ let currentChartType = 'bar';
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // 7/30 天切换是静态结构，只在首次构建一次；后续仅同步激活态，避免每次刷新重建 innerHTML
+  var dayRangeToggleBuilt = false;
+  function ensureDayRangeToggle() {
+    if (dayRangeToggleBuilt) return;
+    var sel = document.getElementById('day-range-select');
+    if (!sel) return;
+    sel.innerHTML = '<span class="radio-link" data-value="7">' + (loc.last7Days || '7 Days') + '</span><span class="radio-link" data-value="30">' + (loc.last30Days || '30 Days') + '</span>';
+    dayRangeToggleBuilt = true;
+  }
+  function syncDayRangeUI() {
+    var btns = document.querySelectorAll('#day-range-select .radio-link');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle('active', btns[i].dataset.value === currentRange);
+    }
+  }
+
   function updateUI(data) {
     loc = data.locales || {};
 
@@ -1190,8 +1206,8 @@ let currentChartType = 'bar';
     if (data.week || data.month) {
       weekSection.style.display = '';
       storedData = data;
-      var sel = document.getElementById('day-range-select');
-      sel.innerHTML = '<span class="radio-link' + (currentRange === '7' ? ' active' : '') + '" data-value="7">' + (loc.last7Days || '7 Days') + '</span><span class="radio-link' + (currentRange === '30' ? ' active' : '') + '" data-value="30">' + (loc.last30Days || '30 Days') + '</span>';
+      ensureDayRangeToggle();
+      syncDayRangeUI();
       renderDailyChart();
     } else {
       weekSection.style.display = 'none';
