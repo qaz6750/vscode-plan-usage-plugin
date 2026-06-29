@@ -48,6 +48,9 @@ export class ConfigManager {
      */
     private static activePlatformCache: PlatformAdapter | null = null;
 
+    /** 配置有效性缓存：仅缓存「有效」结果，避免轮询时每 tick 都读 OS 钥匙串。 */
+    private static configValidCache: boolean | null = null;
+
     static getActivePlatform(): PlatformAdapter {
         if (this.activePlatformCache) { return this.activePlatformCache; }
 
@@ -59,6 +62,11 @@ export class ConfigManager {
     /** 失效已缓存的激活平台（配置变更时调用）。 */
     static invalidateActivePlatformCache(): void {
         this.activePlatformCache = null;
+    }
+
+    /** 失效配置有效性缓存（配置或 API Key 变更时调用）。 */
+    static invalidateConfigValidCache(): void {
+        this.configValidCache = null;
     }
 
     static getAutoRefresh(): boolean {
@@ -81,6 +89,8 @@ export class ConfigManager {
                 await this.secrets.delete(this.SECRET_KEY);
             }
         }
+        // API Key 变更后，让有效性缓存重新校验
+        this.invalidateConfigValidCache();
     }
 
     static async setBaseUrl(url: string): Promise<void> {
@@ -89,7 +99,12 @@ export class ConfigManager {
     }
 
     static async hasValidConfig(): Promise<boolean> {
-        return (await this.validateConfig()).valid;
+        // 仅缓存「有效」结果：有效时跳过后续的 OS 钥匙串读取；
+        // 无效时不缓存，确保问题修复后能自动恢复（下一 tick 重新校验）。
+        if (this.configValidCache === true) { return true; }
+        const valid = (await this.validateConfig()).valid;
+        if (valid) { this.configValidCache = true; }
+        return valid;
     }
 
     /** AFK 阈值缓存（秒） */
