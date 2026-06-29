@@ -13,6 +13,10 @@ const MAX_RETRY_COUNT = 3;
 const RETRY_BASE_DELAY_MS = 1000;
 const RETRY_MAX_DELAY_MS = 8000;
 
+/** 调试开关：仅 CODING_PLAN_DEBUG/GLM_DEBUG 为 'true' 时输出请求/响应明细，避免生产环境刷屏与泄露响应体。 */
+const DEBUG = process.env.CODING_PLAN_DEBUG === 'true' || process.env.GLM_DEBUG === 'true';
+function debugLog(...args: unknown[]): void { if (DEBUG) { console.log(...args); } }
+
 /**
  * 指数退避 + 抖动：base × 2^(attempt-1)，封顶 max，再叠加 75%–125% 随机抖动。
  * 相比线性退避，更适合 429/5xx 限流场景，避免多客户端同步重试造成惊群。
@@ -58,7 +62,7 @@ export async function httpsGetWithRetry<T>(
             lastError = error;
             if (attempt < maxAttempts && isRetryableError(error)) {
                 const delay = computeBackoffDelay(attempt);
-                console.log(`[GPU] Retry ${attempt}/${MAX_RETRY_COUNT} for ${url} in ${delay}ms`);
+                debugLog(`[GPU] Retry ${attempt}/${MAX_RETRY_COUNT} for ${url} in ${delay}ms`);
                 await new Promise(resolve => setTimeout(resolve, delay));
                 continue;
             }
@@ -91,7 +95,7 @@ export function httpsGet<T>(
             }
         };
 
-        console.log(`[GPU] Request: GET ${parsedUrl.hostname}${fullPath}`);
+        debugLog(`[GPU] Request: GET ${parsedUrl.hostname}${fullPath}`);
 
         let settled = false;
         const reqStartTime = Date.now();
@@ -108,7 +112,7 @@ export function httpsGet<T>(
                 settled = true;
 
                 const statusCode = res.statusCode ?? 0;
-                console.log(`[GPU] Response: ${statusCode} from ${parsedUrl.hostname}${parsedUrl.pathname}`);
+                debugLog(`[GPU] Response: ${statusCode} from ${parsedUrl.hostname}${parsedUrl.pathname}`);
 
                 if (statusCode !== 200) {
                     console.error(`[GPU] HTTP Error ${statusCode}: ${data.substring(0, 500)}`);
@@ -129,7 +133,7 @@ export function httpsGet<T>(
                 }
 
                 try {
-                    console.log(`[GPU] Raw response (first 1000 chars): ${data.substring(0, 1000)}`);
+                    debugLog(`[GPU] Raw response (first 1000 chars): ${data.substring(0, 1000)}`);
                     const json = JSON.parse(data);
                     let outputData = json.data || json;
                     if (postProcessor) {
