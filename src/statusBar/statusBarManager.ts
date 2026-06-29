@@ -84,19 +84,19 @@ export class StatusBarManager implements vscode.Disposable {
         const fiveHourPct = fiveHourLimit?.percentage;
         const weeklyPct = weeklyLimit?.percentage;
 
-        const parts: string[] = [];
-        if (fiveHourLimit !== undefined) { parts.push(`${fiveHourLimit.percentage.toFixed(0)}%`); }
-        if (weeklyLimit !== undefined) { parts.push(`${weeklyLimit.percentage.toFixed(0)}%`); }
-        this.statusItem.text = parts.length > 0
-            ? `$(pulse) ${label}  ${parts.join(' · ')}`
+        // 状态栏只显示「约束配额」(5h/周中更接近上限的那个) 的单一百分比——一眼可知离限额多远；
+        // 两个配额的明细与重置倒计时在 tooltip 里，避免无标签双百分比的歧义。
+        const hasQuota = fiveHourLimit !== undefined || weeklyLimit !== undefined;
+        const bindingPct = Math.max(fiveHourPct ?? 0, weeklyPct ?? 0);
+        this.statusItem.text = hasQuota
+            ? `$(pulse) ${label}  ${Math.round(bindingPct)}%`
             : `$(pulse) ${label}  N/A`;
 
         const fiveHourEstimate = fiveHourLimit ? calculate5HourEstimate(fiveHourLimit.percentage, fiveHourLimit.nextResetTime) : null;
         const weeklyEstimate = weeklyLimit ? calculateWeeklyEstimate(weeklyLimit.percentage, weeklyLimit.nextResetTime) : null;
         // 缺失百分比视为「不充裕」（与原 ! 断言在 undefined 时的运行时行为一致）
         const bothSufficient = (fiveHourPct ?? 101) < 70 && (weeklyPct ?? 101) < 70 && (!fiveHourEstimate || !fiveHourEstimate.willExceed) && (!weeklyEstimate || !weeklyEstimate.willExceed);
-        const maxPct = Math.max(fiveHourPct ?? 0, weeklyPct ?? 0);
-        if (maxPct >= 90) {
+        if (bindingPct >= 90) {
             // ≥90% 用 VS Code 原生错误胶囊样式，更醒目
             this.statusItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
             this.statusItem.color = new vscode.ThemeColor('statusBarItem.errorForeground');
