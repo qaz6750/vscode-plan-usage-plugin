@@ -82,10 +82,11 @@ export function httpsGet<T>(
 ): Promise<T> {
     return new Promise((resolve, reject) => {
         const parsedUrl = new URL(url);
-        const fullPath = parsedUrl.pathname + (queryParams || '');
+        // 保留 URL 自带的端口与 query string，避免本地代理/企业网关/自定义端口被静默连到 443
+        const fullPath = parsedUrl.pathname + (queryParams || '') + (parsedUrl.search || '');
         const options = {
             hostname: parsedUrl.hostname,
-            port: 443,
+            port: parsedUrl.port || 443,
             path: fullPath,
             method: 'GET',
             headers: {
@@ -110,6 +111,7 @@ export function httpsGet<T>(
             res.on('end', () => {
                 if (settled) { return; }
                 settled = true;
+                clearTimeout(timeoutId);
 
                 const statusCode = res.statusCode ?? 0;
                 debugLog(`[GPU] Response: ${statusCode} from ${parsedUrl.hostname}${parsedUrl.pathname}`);
@@ -145,6 +147,15 @@ export function httpsGet<T>(
                     console.error(`[GPU] Raw response that failed to parse (first 2000 chars): ${data.substring(0, 2000)}`);
                     reject(new Error(vscode.l10n.t('Failed to parse response from server.')));
                 }
+            });
+
+            // 响应流中途出错（TCP reset 等）也需终止，避免未捕获异常或挂到 60s timeout
+            res.on('error', (err) => {
+                if (settled) { return; }
+                settled = true;
+                clearTimeout(timeoutId);
+                console.error(`[GPU] Response stream error for ${parsedUrl.hostname}${fullPath}:`, err);
+                reject(err);
             });
         });
 
