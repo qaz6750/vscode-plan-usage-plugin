@@ -1,6 +1,6 @@
 {
   "displayName": "Coding Plan Usage",
-  "description": "Query quota and usage statistics for Coding Plan services (GLM, Kimi, Doubao, and more)",
+  "description": "Query quota and usage statistics for Coding Plan services (GLM, Kimi, and more)",
   "viewsContainer.title": "Coding Plan Usage",
   "views.usageStats.name": "Usage Statistics",
   "command.refresh.title": "Coding Plan Usage: Refresh Usage Statistics",
