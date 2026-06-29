@@ -6,7 +6,7 @@ import { mockUsageResponse } from './mock-data';
  * 用量查询门面。
  *
  * 真正的平台请求逻辑下沉到各 {@link PlatformAdapter}（见 src/platforms/）。
- * 本类仅负责：mock 切换 → 配置校验 → 取当前激活平台适配器 → 委派查询。
+ * 本类仅负责：mock 切换 → 取当前激活平台适配器 → 委派查询（配置校验由调用方完成）。
  *
  * 平台的选择由设置项 `glmPlanUsage.platform`（auto/glm/kimi/doubao…）与
  * `baseUrl` 共同决定，详见 {@link ConfigManager.getActivePlatform}。
@@ -18,11 +18,7 @@ export class UsageQueryService {
             return mockUsageResponse;
         }
 
-        const validation = await ConfigManager.validateConfig();
-        if (!validation.valid) {
-            throw new Error(validation.error);
-        }
-
+        // 配置校验由调用方（extension.queryUsage）在进入前完成，此处不再重复读取钥匙串
         const adapter = ConfigManager.getActivePlatform();
         const authToken = await ConfigManager.getAuthToken();
         const baseUrl = ConfigManager.getBaseUrl();

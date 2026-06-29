@@ -33,7 +33,21 @@ async function migrateAuthToken(context: vscode.ExtensionContext): Promise<void>
     await context.globalState.update(MIGRATION_KEY, true);
 }
 
+// 重入保护：进行中的查询复用其 Promise，避免并发触发重复网络请求（手动刷新撞上轮询/reset 定时器）
+let queryUsageInFlight: Promise<void> | null = null;
+
 async function queryUsage(forceRefresh = false): Promise<void> {
+    if (queryUsageInFlight) { return queryUsageInFlight; }
+    const p = performQueryUsage(forceRefresh);
+    queryUsageInFlight = p;
+    try {
+        await p;
+    } finally {
+        queryUsageInFlight = null;
+    }
+}
+
+async function performQueryUsage(forceRefresh = false): Promise<void> {
     const validation = await ConfigManager.validateConfig();
     if (!validation.valid) {
         const errorMsg = validation.error || vscode.l10n.t('Configuration is invalid');
