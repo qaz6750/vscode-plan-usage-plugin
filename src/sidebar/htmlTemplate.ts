@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export function getHtmlTemplate(echartsUri: vscode.Uri): string {
+export function getHtmlTemplate(echartsUri: vscode.Uri, cspSource: string, nonce: string): string {
     const echartsSrc = echartsUri.toString();
 
     return `<!DOCTYPE html>
@@ -8,6 +8,7 @@ export function getHtmlTemplate(echartsUri: vscode.Uri): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${cspSource} https: data:; script-src 'nonce-${nonce}'; style-src ${cspSource} 'unsafe-inline';">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -256,7 +257,7 @@ body {
 </div>
 <div class="header">
   <span class="title" id="header-title">Coding Plan Usage</span>
-  <button class="refresh-btn" id="refresh-btn" onclick="doRefresh()">&#x21bb;</button>
+  <button class="refresh-btn" id="refresh-btn">&#x21bb;</button>
 </div>
 <div class="updated" id="header-updated" style="margin-bottom:10px;font-size:10px;color:var(--vscode-descriptionForeground)"></div>
 
@@ -344,8 +345,8 @@ body {
   </button>
 </div>
 
-<script src="${echartsSrc}"></script>
-<script>
+<script nonce="${nonce}" src="${echartsSrc}"></script>
+<script nonce="${nonce}">
 (function() {
   const vscodeApi = acquireVsCodeApi();
   let todayChart = null;
@@ -1281,6 +1282,10 @@ let currentChartType = 'bar';
     showLoading(loc.loading || 'Loading...');
     vscodeApi.postMessage({ command: 'refresh' });
   };
+
+  // 用 addEventListener 绑定（CSP 下禁用内联 onclick）
+  var refreshBtn = document.getElementById('refresh-btn');
+  if (refreshBtn && window.doRefresh) { refreshBtn.addEventListener('click', window.doRefresh); }
 
   document.getElementById('settings-btn').addEventListener('click', function() {
     vscodeApi.postMessage({ command: 'openSettings' });
