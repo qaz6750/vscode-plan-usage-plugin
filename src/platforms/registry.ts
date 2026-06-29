@@ -21,12 +21,6 @@ export class PlatformRegistry {
         return ADAPTERS.find((a) => a.descriptor.id === id);
     }
 
-    /** 按 baseUrl 自动识别所属平台（用于 platform == 'auto'）。 */
-    static getByBaseUrl(baseUrl: string): PlatformAdapter | undefined {
-        if (!baseUrl) { return undefined; }
-        return ADAPTERS.find((a) => a.matchesBaseUrl(baseUrl));
-    }
-
     /** 兜底默认平台（GLM，保证向后兼容）。 */
     static getDefault(): PlatformAdapter {
         return glmAdapter;

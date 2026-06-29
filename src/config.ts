@@ -93,11 +93,6 @@ export class ConfigManager {
         this.invalidateConfigValidCache();
     }
 
-    static async setBaseUrl(url: string): Promise<void> {
-        const config = vscode.workspace.getConfiguration(this.CONFIG_SECTION);
-        await config.update('baseUrl', url, vscode.ConfigurationTarget.Global);
-    }
-
     static async hasValidConfig(): Promise<boolean> {
         // 仅缓存「有效」结果：有效时跳过后续的 OS 钥匙串读取；
         // 无效时不缓存，确保问题修复后能自动恢复（下一 tick 重新校验）。

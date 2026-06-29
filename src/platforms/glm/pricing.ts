@@ -8,7 +8,6 @@
  *
  * 官网计费说明原文摘录：模型按每百万 tokens 计费；GLM 系列词表 token 与汉字换算约 1:1.6。
  */
-import { ModelUsageData } from '../../types';
 
 export interface ModelPrice {
     /** 输入价（元 / 百万 tokens） */
@@ -53,30 +52,6 @@ export interface GlmCostEstimate {
     totalCny: number;
     perModel: { model: string; costCny: number }[];
     hasFallback: boolean;
-}
-
-/** 依据模型用量估算等价 API 计费金额（CNY）。 */
-export function estimateGlmCost(modelUsage: ModelUsageData[]): GlmCostEstimate {
-    let totalCny = 0;
-    let hasFallback = false;
-    const perModel: { model: string; costCny: number }[] = [];
-
-    for (const m of modelUsage) {
-        // 跳过缺少模型名的条目（如聚合/总计行），避免后续匹配报错
-        if (!m || !m.model) { continue; }
-        const { price, isFallback } = getGlmModelPrice(m.model);
-        if (isFallback) { hasFallback = true; }
-        const cost =
-            (m.inputTokens / 1_000_000) * price.inputPerMillion +
-            (m.outputTokens / 1_000_000) * price.outputPerMillion;
-        totalCny += cost;
-        if (cost > 0) {
-            perModel.push({ model: m.model, costCny: cost });
-        }
-    }
-
-    perModel.sort((a, b) => b.costCny - a.costCny);
-    return { totalCny, perModel, hasFallback };
 }
 
 /**
