@@ -60,7 +60,7 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
         : platformName;
 
     const title = localizedBrackets(titleKey);
-    md.appendMarkdown(`### ${title}\n\n`);
+    md.appendMarkdown(`### $(pulse) ${title}\n\n`);
 
     const now = new Date();
     md.appendMarkdown(`**${vscode.l10n.t('Updated')}:** ${now.toLocaleString()}\n\n`);

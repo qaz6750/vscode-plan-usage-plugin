@@ -11,14 +11,14 @@ export function getCombinedColor(params: ColorParams): string {
     const maxPct = Math.max(fiveHourPct, weeklyPct);
 
     if (maxPct >= 90) {
-        return '#F44747';
+        return '#f0883e';
     }
 
     if (maxPct >= 70) {
-        return '#CCA700';
+        return '#d7ba7d';
     }
 
-    return '#89D185';
+    return '#6db987';
 }
 
 const WEEKDAY_NAMES = [

@@ -3,7 +3,7 @@ import { UsageResponse } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY } from '../constants';
 import { ConfigManager } from '../config';
 import { UserActivityState } from '../enums';
-import { formatRemainingTimeCompact, getCombinedColor } from './formatters';
+import { getCombinedColor } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate } from './usageEstimate';
 import { buildTooltip } from './tooltipBuilder';
 
@@ -21,7 +21,7 @@ export class StatusBarManager implements vscode.Disposable {
         );
 
         this.statusItem.command = 'glmPlanUsage.refresh';
-        this.statusItem.text = `$(sync~spin) ${this.platformLabel()}: --`;
+        this.statusItem.text = `$(loading~spin) ${this.platformLabel()}`;
         this.statusItem.hide();
 
         this.outputChannel = vscode.window.createOutputChannel('Coding Plan Usage');
@@ -53,8 +53,9 @@ export class StatusBarManager implements vscode.Disposable {
 
     private updateStatusBarAppearance(): void {
         if (this.userActivityState === UserActivityState.AFK) {
+            this.statusItem.backgroundColor = undefined;
             this.statusItem.color = StatusBarManager.COLOR_AFK;
-            this.statusItem.text = `${this.platformLabel()}: AFK`;
+            this.statusItem.text = `$(clock) ${this.platformLabel()} AFK`;
             this.statusItem.tooltip = undefined;
         } else if (this.lastResponse) {
             this.updateUsage(this.lastResponse);
@@ -67,7 +68,8 @@ export class StatusBarManager implements vscode.Disposable {
     }
 
     setLoading(): void {
-        this.statusItem.text = `$(sync~spin) ${this.platformLabel()}: --`;
+        this.statusItem.backgroundColor = undefined;
+        this.statusItem.text = `$(loading~spin) ${this.platformLabel()}`;
         this.statusItem.tooltip = vscode.l10n.t('Querying...');
         this.show();
     }
@@ -85,35 +87,34 @@ export class StatusBarManager implements vscode.Disposable {
         const fiveHourPct = fiveHourLimit?.percentage;
         const weeklyPct = weeklyLimit?.percentage;
 
-        if (fiveHourLimit !== undefined && weeklyLimit !== undefined) {
-            const t5 = fiveHourLimit.nextResetTime ? formatRemainingTimeCompact(fiveHourLimit.nextResetTime) : '';
-            const tw = weeklyLimit.nextResetTime ? formatRemainingTimeCompact(weeklyLimit.nextResetTime) : '';
-            this.statusItem.text = `${label}: ${fiveHourLimit.percentage.toFixed(0)}%${t5 ? ' ' + t5 : ''} | ${weeklyLimit.percentage.toFixed(0)}%${tw ? ' ' + tw : ''}`;
-        } else if (fiveHourLimit !== undefined) {
-            const t5 = fiveHourLimit.nextResetTime ? formatRemainingTimeCompact(fiveHourLimit.nextResetTime) : '';
-            this.statusItem.text = `${label}: ${fiveHourLimit.percentage.toFixed(0)}%${t5 ? ' ' + t5 : ''}`;
-        } else if (weeklyLimit !== undefined) {
-            const tw = weeklyLimit.nextResetTime ? formatRemainingTimeCompact(weeklyLimit.nextResetTime) : '';
-            this.statusItem.text = `${label}: ${weeklyLimit.percentage.toFixed(0)}%${tw ? ' ' + tw : ''}`;
-        } else {
-            this.statusItem.text = `${label}: N/A`;
-        }
+        const parts: string[] = [];
+        if (fiveHourLimit !== undefined) { parts.push(`${fiveHourLimit.percentage.toFixed(0)}%`); }
+        if (weeklyLimit !== undefined) { parts.push(`${weeklyLimit.percentage.toFixed(0)}%`); }
+        this.statusItem.text = parts.length > 0
+            ? `$(pulse) ${label}  ${parts.join(' · ')}`
+            : `$(pulse) ${label}  N/A`;
 
         const fiveHourEstimate = fiveHourLimit ? calculate5HourEstimate(fiveHourLimit.percentage, fiveHourLimit.nextResetTime) : null;
         const weeklyEstimate = weeklyLimit ? calculateWeeklyEstimate(weeklyLimit.percentage, weeklyLimit.nextResetTime) : null;
         // 缺失百分比视为「不充裕」（与原 ! 断言在 undefined 时的运行时行为一致）
         const bothSufficient = (fiveHourPct ?? 101) < 70 && (weeklyPct ?? 101) < 70 && (!fiveHourEstimate || !fiveHourEstimate.willExceed) && (!weeklyEstimate || !weeklyEstimate.willExceed);
-        this.statusItem.color = bothSufficient ? '#89D185' : getCombinedColor({
-            fiveHourPct,
-            weeklyPct
-        });
+        const maxPct = Math.max(fiveHourPct ?? 0, weeklyPct ?? 0);
+        if (maxPct >= 90) {
+            // ≥90% 用 VS Code 原生错误胶囊样式，更醒目
+            this.statusItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+            this.statusItem.color = new vscode.ThemeColor('statusBarItem.errorForeground');
+        } else {
+            this.statusItem.backgroundColor = undefined;
+            this.statusItem.color = bothSufficient ? '#6db987' : getCombinedColor({ fiveHourPct, weeklyPct });
+        }
         this.statusItem.tooltip = buildTooltip(response);
         this.show();
     }
 
     setError(message: string): void {
         this.statusItem.text = `$(error) ${this.platformLabel()}`;
-        this.statusItem.color = '#F44747';
+        this.statusItem.backgroundColor = new vscode.ThemeColor('statusBarItem.errorBackground');
+        this.statusItem.color = new vscode.ThemeColor('statusBarItem.errorForeground');
         const md = new vscode.MarkdownString();
         md.appendMarkdown(`### $(error) ${this.platformTitle()}\n\n`);
         md.appendMarkdown(`${message}\n\n`);
@@ -124,6 +125,7 @@ export class StatusBarManager implements vscode.Disposable {
 
     setNotConfigured(): void {
         this.statusItem.text = `$(settings-gear) ${this.platformLabel()}`;
+        this.statusItem.backgroundColor = undefined;
         this.statusItem.color = undefined;
         const md = new vscode.MarkdownString();
         md.appendMarkdown(`### $(settings-gear) ${this.platformTitle()}\n\n`);
