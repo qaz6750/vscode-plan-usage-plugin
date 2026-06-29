@@ -20,6 +20,8 @@ export class UsageCache {
     private mem: UsageResponse | null = null;
     private memTimestamp = 0;
     private memPlatform: string | null = null;
+    /** 上一次落盘的序列化结果，用于去重（空闲/AFK 期间数据不变则跳过磁盘写） */
+    private lastPersisted: string | null = null;
 
     constructor(private readonly globalState: vscode.Memento) {}
 
@@ -63,7 +65,11 @@ export class UsageCache {
         this.mem = data;
         this.memTimestamp = Date.now();
         this.memPlatform = platform;
-        // 落盘用于重启恢复（每周期一次写，可接受）
+        // 落盘用于重启恢复；但若数据与上次完全一致（空闲/AFK 期间常见），则跳过磁盘写。
+        // JSON.stringify 开销远小于一次 leveldb 写，且仅在内存命中失败时才会走到这里。
+        const serialized = JSON.stringify(data);
+        if (serialized === this.lastPersisted) { return; }
+        this.lastPersisted = serialized;
         this.globalState.update(this.storageKey(), { data, timestamp: this.memTimestamp } as CachedUsage);
     }
 }
