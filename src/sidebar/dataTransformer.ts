@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { UsageResponse, QuotaRatePoint, QuotaRateData, HourlyQuotaStats, DailyQuotaStats } from '../types';
+import { UsageResponse } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { ConfigManager } from '../config';
 import type { CostEstimate } from '../platforms';
@@ -136,14 +136,13 @@ export interface SidebarData {
     today: TodayData | null;
     week: DailyData | null;
     month: DailyData | null;
-    quotaRate: QuotaRateData;
     /** 按 API 计费折算的等价花费（无定价数据时为 null） */
     estimatedCost: CostEstimate | null;
     /** 已知模型 → 图表颜色（来自当前平台 adapter，可覆盖默认调色板） */
     modelColors: Record<string, string>;
 }
 
-export function transformResponse(response: UsageResponse, hourlyQuotaStats?: HourlyQuotaStats[], weeklyQuotaStats?: DailyQuotaStats[]): SidebarData {
+export function transformResponse(response: UsageResponse): SidebarData {
     const now = new Date();
 
     const quotas: QuotaItem[] = [];
@@ -363,7 +362,6 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
         today,
         week,
         month,
-        quotaRate: buildQuotaRateData(hourlyQuotaStats, weeklyQuotaStats, level),
         estimatedCost,
         modelColors: adapter.descriptor.modelColors || {}
     };
@@ -380,27 +378,3 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
  *   hourly.pctOfWeekly = HourlyQuotaStats.weeklyDelta
  *   daily.pctOfWeekly  = DailyQuotaStats.weeklyDelta
  */
-function buildQuotaRateData(
-    hourlyStats: HourlyQuotaStats[] | undefined,
-    weeklyStats: DailyQuotaStats[] | undefined,
-    level: string,
-): QuotaRateData {
-    const hourly: QuotaRatePoint[] = (hourlyStats || []).map(stat => ({
-        label: stat.hour,
-        tokens: null,
-        pctOf5h: stat.fiveHourDelta,
-        pctOfWeekly: stat.weeklyDelta,
-        isToday: true,
-    }));
-
-    const daily: QuotaRatePoint[] = (weeklyStats || []).map(stat => ({
-        label: stat.date,
-        subLabel: stat.weekday,
-        tokens: null,
-        pctOf5h: null,
-        pctOfWeekly: stat.weeklyDelta,
-        isToday: stat.isToday,
-    }));
-
-    return { hourly, daily, level };
-}
