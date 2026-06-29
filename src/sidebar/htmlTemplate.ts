@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-export function getHtmlTemplate(echartsUri: vscode.Uri, cspSource: string, nonce: string): string {
+export function getHtmlTemplate(echartsUri: vscode.Uri, cspSource: string, nonce: string, version: string): string {
     const echartsSrc = echartsUri.toString();
 
     return `<!DOCTYPE html>
@@ -273,6 +273,14 @@ body {
   font-size: 12px;
   color: var(--vscode-descriptionForeground);
 }
+.version {
+  text-align: center;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground);
+  opacity: 0.6;
+  margin-top: 10px;
+  letter-spacing: 0.3px;
+}
 </style>
 </head>
 <body>
@@ -369,6 +377,8 @@ body {
     <span id="apikey-label">Configure API Key</span>
   </button>
 </div>
+
+<div class="version">Coding Plan Usage · v${version}</div>
 
 <script nonce="${nonce}" src="${echartsSrc}"></script>
 <script nonce="${nonce}">

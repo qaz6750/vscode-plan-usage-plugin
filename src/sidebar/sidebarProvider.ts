@@ -53,7 +53,8 @@ localResourceRoots: [
 
         // 严格 CSP：脚本仅允许带 nonce 的（外链 echarts + 内联脚本），样式允许内联
         const nonce = getNonce();
-        webviewView.webview.html = getHtmlTemplate(echartsUri, webviewView.webview.cspSource, nonce);
+        const version = String(this._context.extension.packageJSON?.version ?? '');
+        webviewView.webview.html = getHtmlTemplate(echartsUri, webviewView.webview.cspSource, nonce, version);
 
         this._disposables.push(
             webviewView.webview.onDidReceiveMessage(async (msg) => {
