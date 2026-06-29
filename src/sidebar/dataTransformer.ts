@@ -5,7 +5,7 @@ import { ConfigManager } from '../config';
 import type { CostEstimate } from '../platforms';
 import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
-import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls, getTodayModelTokenTotals } from '../statusBar/tooltipBuilder';
+import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
 
 function colorForPercentage(pct: number): string {
     if (pct >= 90) { return '#F44747'; }
@@ -190,10 +190,15 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
     let today: TodayData | null = null;
     let week: DailyData | null = null;
     let month: DailyData | null = null;
+    let todayTokenTotals: { model: string; tokens: number }[] = [];
 
     if (response.trend) {
         const todayData = filterTodayData(response.trend);
         const todayModelData = filterTodayDataByModel(response.trend);
+        // 复用今日分模型数据折算 token 总量供花费估算，避免 estimateCost 内部再遍历一次
+        todayTokenTotals = todayModelData
+            .map(md => ({ model: md.model, tokens: (md.yValue || []).reduce((s: number, v) => s + (v ?? 0), 0) }))
+            .filter(x => x.tokens > 0);
         const todayModels = todayModelData.map(md => ({
             model: md.model,
             xTime: md.xTime,
@@ -307,7 +312,7 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
     const adapter = ConfigManager.getActivePlatform();
     const platformName = adapter.descriptor.displayName;
     const title = level ? `[${level}] ${platformName}` : platformName;
-    const estimatedCost = adapter.estimateCost ? adapter.estimateCost(getTodayModelTokenTotals(response)) : null;
+    const estimatedCost = adapter.estimateCost ? adapter.estimateCost(todayTokenTotals) : null;
 
     return {
         level,
