@@ -18,6 +18,7 @@ export class AutoRefreshManager implements vscode.Disposable {
     private autoRefreshTimer: NodeJS.Timeout | undefined;
     private resetTimers: ResetTimerEntry[] = [];
     private pendingNotificationTimer: NodeJS.Timeout | undefined;
+    private recoveryRefreshTimer: NodeJS.Timeout | undefined;
     private lastResetFireTime = 0;
     private activityMonitor: ActivityMonitor | undefined;
     private previousState: UserActivityState = UserActivityState.ACTIVE;
@@ -159,7 +160,9 @@ export class AutoRefreshManager implements vscode.Disposable {
 
         if (oldState === UserActivityState.AFK && newState === UserActivityState.ACTIVE && !this.isRefreshing) {
             this.isRefreshing = true;
-            setTimeout(async () => {
+            if (this.recoveryRefreshTimer) { clearTimeout(this.recoveryRefreshTimer); }
+            this.recoveryRefreshTimer = setTimeout(async () => {
+                this.recoveryRefreshTimer = undefined;
                 await this.queryUsage(true);
                 this.isRefreshing = false;
             }, 1000);
@@ -200,6 +203,10 @@ export class AutoRefreshManager implements vscode.Disposable {
         if (this.pendingNotificationTimer) {
             clearTimeout(this.pendingNotificationTimer);
             this.pendingNotificationTimer = undefined;
+        }
+        if (this.recoveryRefreshTimer) {
+            clearTimeout(this.recoveryRefreshTimer);
+            this.recoveryRefreshTimer = undefined;
         }
         if (this.activityMonitor) {
             this.activityMonitor.dispose();

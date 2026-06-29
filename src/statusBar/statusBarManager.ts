@@ -9,7 +9,6 @@ import { buildTooltip } from './tooltipBuilder';
 
 export class StatusBarManager implements vscode.Disposable {
     private statusItem: vscode.StatusBarItem;
-    private outputChannel: vscode.OutputChannel;
     private lastResponse: UsageResponse | null = null;
     private userActivityState: UserActivityState = UserActivityState.ACTIVE;
     private static readonly COLOR_AFK = new vscode.ThemeColor('disabledForeground');
@@ -23,8 +22,6 @@ export class StatusBarManager implements vscode.Disposable {
         this.statusItem.command = 'glmPlanUsage.refresh';
         this.statusItem.text = `$(loading~spin) ${this.platformLabel()}`;
         this.statusItem.hide();
-
-        this.outputChannel = vscode.window.createOutputChannel('Coding Plan Usage');
     }
 
     /** 当前激活平台的紧凑前缀（如 GLM / Kimi / Doubao）。 */
@@ -137,6 +134,5 @@ export class StatusBarManager implements vscode.Disposable {
 
     dispose(): void {
         this.statusItem.dispose();
-        this.outputChannel.dispose();
     }
 }
