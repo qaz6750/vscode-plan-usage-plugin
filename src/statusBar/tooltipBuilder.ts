@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { UsageResponse, TrendData } from '../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../constants';
 import { ConfigManager } from '../config';
+import type { ModelTokenTotal } from '../platforms';
 import { formatResetTime, formatDateTimeOnly, getWeekdayName } from './formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate, UsageEstimateResult } from './usageEstimate';
 
@@ -9,6 +10,14 @@ export interface TrendSlice {
     xTime: string[];
     yValue: (number | null)[];
     modelCallCount: (number | null)[];
+}
+
+/** 从 response.trend 提取「今日各模型 token 总量」，用于花费估算（与侧栏今日用量同源）。 */
+export function getTodayModelTokenTotals(response: UsageResponse): ModelTokenTotal[] {
+    if (!response.trend || !response.trend.modelDataList) { return []; }
+    return filterTodayDataByModel(response.trend)
+        .map((md) => ({ model: md.model, tokens: (md.yValue || []).reduce((s: number, v) => s + (v ?? 0), 0) }))
+        .filter((x) => x.tokens > 0);
 }
 
 function localizedBrackets(text: string): string {
@@ -56,8 +65,8 @@ export function buildTooltip(response: UsageResponse): vscode.MarkdownString {
     const now = new Date();
     md.appendMarkdown(`**${vscode.l10n.t('Updated')}:** ${now.toLocaleString()}\n\n`);
 
-    // 等价 API 花费估算（仅当平台提供定价数据时显示）
-    const cost = adapter.estimateCost ? adapter.estimateCost(response.modelUsage) : null;
+    // 等价 API 花费估算：基于今日 token 趋势（仅当平台提供定价数据时显示）
+    const cost = adapter.estimateCost ? adapter.estimateCost(getTodayModelTokenTotals(response)) : null;
     if (cost && cost.totalCny > 0) {
         const fallbackMark = cost.hasFallback ? ' ⚠️' : '';
         md.appendMarkdown(`**${vscode.l10n.t('Equivalent API cost')} (${cost.windowLabel}):** ≈¥${cost.totalCny.toFixed(2)}${fallbackMark}\n\n`);

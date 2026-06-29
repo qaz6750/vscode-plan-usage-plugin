@@ -8,7 +8,7 @@
  *   {@link QUOTA_TYPE_WEEKLY} / {@link QUOTA_TYPE_MCP} 这几个规范类型，从而让
  *   下游的状态栏 / 估算 / 历史记录 / 侧边栏管线无需感知平台差异。
  */
-import type { UsageResponse, UsageQueryConfig, ModelUsageData } from '../types';
+import type { UsageResponse, UsageQueryConfig } from '../types';
 
 /**
  * 平台标识，如 'glm'、'kimi'、'doubao'。用于设置项与存储键。
@@ -71,6 +71,12 @@ export interface CostEstimate {
     hasFallback: boolean;
 }
 
+/** 单个模型的 token 总量（用于按总量估算花费）。 */
+export interface ModelTokenTotal {
+    model: string;
+    tokens: number;
+}
+
 /** 平台适配器契约。 */
 export interface PlatformAdapter {
     readonly descriptor: PlatformDescriptor;
@@ -88,8 +94,9 @@ export interface PlatformAdapter {
     /** 按档位编码查找套餐（大小写不敏感）。 */
     getPlan(level: string): PlatformPlan | undefined;
     /**
-     * 可选：根据模型用量估算等价 API 计费金额（CNY）。
+     * 可选：根据各模型的 token 总量估算等价 API 计费金额（CNY）。
+     * 入参为「模型 → token 总量」；趋势数据无输入/输出拆分，按均价估算。
      * 未实现（如脚手架平台）时返回 null，UI 将隐藏该信息。
      */
-    estimateCost?(modelUsage: ModelUsageData[]): CostEstimate | null;
+    estimateCost?(modelTokenTotals: ModelTokenTotal[]): CostEstimate | null;
 }

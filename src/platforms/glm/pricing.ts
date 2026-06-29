@@ -78,3 +78,28 @@ export function estimateGlmCost(modelUsage: ModelUsageData[]): GlmCostEstimate {
     perModel.sort((a, b) => b.costCny - a.costCny);
     return { totalCny, perModel, hasFallback };
 }
+
+/**
+ * 依据各模型 token 总量估算等价 API 计费金额（CNY）。
+ * 趋势数据只有 token 总量、无输入/输出拆分，故按 (输入价 + 输出价) / 2 的均价估算。
+ */
+export function estimateGlmCostFromTotals(modelTokenTotals: { model: string; tokens: number }[]): GlmCostEstimate {
+    let totalCny = 0;
+    let hasFallback = false;
+    const perModel: { model: string; costCny: number }[] = [];
+
+    for (const t of modelTokenTotals) {
+        if (!t || !t.model) { continue; }
+        const { price, isFallback } = getGlmModelPrice(t.model);
+        if (isFallback) { hasFallback = true; }
+        const blended = (price.inputPerMillion + price.outputPerMillion) / 2;
+        const cost = (t.tokens / 1_000_000) * blended;
+        totalCny += cost;
+        if (cost > 0) {
+            perModel.push({ model: t.model, costCny: cost });
+        }
+    }
+
+    perModel.sort((a, b) => b.costCny - a.costCny);
+    return { totalCny, perModel, hasFallback };
+}

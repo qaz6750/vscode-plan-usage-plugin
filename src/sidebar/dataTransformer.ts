@@ -5,7 +5,7 @@ import { ConfigManager } from '../config';
 import type { CostEstimate } from '../platforms';
 import { formatTokens, formatResetTime, formatDateTimeOnly } from '../statusBar/formatters';
 import { calculate5HourEstimate, calculateWeeklyEstimate, calculateMonthlyEstimate } from '../statusBar/usageEstimate';
-import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls } from '../statusBar/tooltipBuilder';
+import { filterTodayData, filterTodayDataByModel, aggregateDailyData, aggregateDailyDataByModel, aggregateDailyCalls, aggregateDailyCallsByModel, getPeakToken, getPeakCalls, getTodayModelTokenTotals } from '../statusBar/tooltipBuilder';
 
 function colorForPercentage(pct: number): string {
     if (pct >= 90) { return '#F44747'; }
@@ -305,7 +305,7 @@ export function transformResponse(response: UsageResponse, hourlyQuotaStats?: Ho
     const adapter = ConfigManager.getActivePlatform();
     const platformName = adapter.descriptor.displayName;
     const title = level ? `[${level}] ${platformName}` : platformName;
-    const estimatedCost = adapter.estimateCost ? adapter.estimateCost(response.modelUsage) : null;
+    const estimatedCost = adapter.estimateCost ? adapter.estimateCost(getTodayModelTokenTotals(response)) : null;
 
     return {
         level,

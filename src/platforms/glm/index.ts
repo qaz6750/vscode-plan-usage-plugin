@@ -13,9 +13,9 @@
 import { URL } from 'url';
 import { UsageResponse, ModelUsageData, ToolUsageData, QuotaLimitData, TrendData, ActiveDaysInfo } from '../../types';
 import { QUOTA_TYPE_5H, QUOTA_TYPE_WEEKLY, QUOTA_TYPE_MCP } from '../../constants';
-import { PlatformAdapter, PlatformPlan, CostEstimate, UsageQueryConfig } from '../types';
+import { PlatformAdapter, PlatformPlan, CostEstimate, ModelTokenTotal, UsageQueryConfig } from '../types';
 import { httpsGetWithRetry } from '../httpClient';
-import { estimateGlmCost } from './pricing';
+import { estimateGlmCostFromTotals } from './pricing';
 
 // ===== 套餐档位（迁自 constants.ts） =====
 
@@ -184,17 +184,17 @@ export const glmAdapter: PlatformAdapter = {
         return plans.find((p) => p.level.toLowerCase() === lower);
     },
 
-    estimateCost(modelUsage: ModelUsageData[]): CostEstimate | null {
-        if (!modelUsage || modelUsage.length === 0) { return null; }
+    estimateCost(modelTokenTotals: ModelTokenTotal[]): CostEstimate | null {
+        if (!modelTokenTotals || modelTokenTotals.length === 0) { return null; }
         // 花费估算为次要信息，绝不能因定价匹配异常而阻断主渲染：整体兜底返回 null
         try {
-            const est = estimateGlmCost(modelUsage);
+            const est = estimateGlmCostFromTotals(modelTokenTotals);
             if (est.totalCny <= 0) { return null; }
             return {
                 totalCny: est.totalCny,
                 perModel: est.perModel,
-                // modelUsage 来自 7 天时间窗口的查询
-                windowLabel: 'Last 7 days',
+                // 基于今日 token 趋势估算
+                windowLabel: 'Today',
                 hasFallback: est.hasFallback,
             };
         } catch (e) {

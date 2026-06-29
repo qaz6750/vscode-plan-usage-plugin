@@ -259,8 +259,6 @@ body {
   <button class="refresh-btn" id="refresh-btn" onclick="doRefresh()">&#x21bb;</button>
 </div>
 <div class="updated" id="header-updated" style="margin-bottom:10px;font-size:10px;color:var(--vscode-descriptionForeground)"></div>
-<div id="header-cost" style="margin-bottom:4px;font-size:11px;font-weight:600;display:none"></div>
-<div id="header-cost-breakdown" style="margin-bottom:10px;font-size:10px;color:var(--vscode-descriptionForeground);line-height:1.5;display:none"></div>
 
 <div id="error-section" style="display:none">
   <div class="error-container">
@@ -304,6 +302,10 @@ body {
     <div class="section-stats-row">
       <span class="stat-suffix" id="today-tokens-wrap"><span id="today-tokens-label"></span>: <span id="today-tokens">--</span></span>
       <span class="stat-suffix" id="today-calls-wrap"><span id="today-calls-label"></span>: <span id="today-calls">--</span></span>
+    </div>
+    <div class="section-stats-row" id="today-cost-row" style="display:none">
+      <span class="stat-suffix"><span id="today-cost-label"></span>: ≈¥<span id="today-cost">--</span></span>
+      <span class="stat-suffix" id="today-cost-breakdown" style="opacity:0.75"></span>
     </div>
   </div>
   <div id="today-chart" class="chart-container"></div>
@@ -1086,26 +1088,6 @@ let currentChartType = 'bar';
       }
     }
     document.getElementById('header-updated').textContent = (loc.updated || 'Updated') + ': ' + (data.updated || '');
-    const costEl = document.getElementById('header-cost');
-    const breakdownEl = document.getElementById('header-cost-breakdown');
-    const ec = data.estimatedCost;
-    if (costEl && ec && ec.totalCny > 0) {
-      const note = ec.hasFallback ? ' <span style="font-weight:400;opacity:0.7">(' + (loc.estimatedCostFallbackNote || '') + ')</span>' : '';
-      costEl.innerHTML = (loc.estimatedCostLabel || 'Equivalent API cost') + ' (' + (ec.windowLabel || '') + '): ≈¥' + ec.totalCny.toFixed(2) + note;
-      costEl.style.display = '';
-      // 按模型成本明细：最多展示前 3 个
-      if (breakdownEl && ec.perModel && ec.perModel.length > 0) {
-        breakdownEl.innerHTML = ec.perModel.slice(0, 3)
-          .map(function (m) { return m.model + ': ¥' + m.costCny.toFixed(2); })
-          .join(' &middot; ');
-        breakdownEl.style.display = '';
-      } else if (breakdownEl) {
-        breakdownEl.style.display = 'none';
-      }
-    } else {
-      if (costEl) { costEl.style.display = 'none'; }
-      if (breakdownEl) { breakdownEl.style.display = 'none'; }
-    }
     document.getElementById('refresh-btn').title = loc.refresh || 'Refresh';
     document.getElementById('settings-label').textContent = loc.settings || 'Settings';
     document.getElementById('apikey-label').textContent = loc.configureApiKey || 'Configure API Key';
@@ -1146,6 +1128,22 @@ let currentChartType = 'bar';
       document.getElementById('today-calls-label').textContent = loc.calls || 'Calls';
       document.getElementById('today-tokens').textContent = data.today.totalTokens;
       document.getElementById('today-calls').textContent = data.today.totalCalls;
+      // 等价 API 花费（基于今日 token，显示在「词元」下方）
+      var todayCostRow = document.getElementById('today-cost-row');
+      var ec = data.estimatedCost;
+      if (todayCostRow && ec && ec.totalCny > 0) {
+        document.getElementById('today-cost-label').textContent = loc.estimatedCostLabel || 'Equivalent API cost';
+        document.getElementById('today-cost').textContent = ec.totalCny.toFixed(2);
+        var bk = document.getElementById('today-cost-breakdown');
+        if (bk) {
+          bk.textContent = (ec.perModel && ec.perModel.length > 0)
+            ? ec.perModel.slice(0, 3).map(function (m) { return m.model + ': ¥' + m.costCny.toFixed(2); }).join(' · ') + (ec.hasFallback ? ' · ⚠️' : '')
+            : '';
+        }
+        todayCostRow.style.display = '';
+      } else if (todayCostRow) {
+        todayCostRow.style.display = 'none';
+      }
       initTodayChart(data.today, currentMetric, currentChartType);
     } else {
       todaySection.style.display = 'none';
